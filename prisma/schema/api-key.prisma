@@ -1,0 +1,155 @@
+// API Key model with comprehensive security and monitoring features
+model ApiKey {
+  id         String    @id @default(cuid(2))
+  name       String
+  key        String    @unique
+  isActive   Boolean   @default(true)
+  expiresAt  DateTime?
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // Description and metadata
+  description String?
+  metadata    Json?   @default("{}")
+  tags        Json?   @default("[]") // Array of strings
+
+  // Environment the API key is for (one-to-one relation)
+  environmentId String?             @unique
+  environment   ProjectEnvironment? @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+
+  // Basic Permissions
+  canRead  Boolean @default(true)
+  canWrite Boolean @default(false)
+
+  // Scopes - what resources the key can access
+  scopes Json? @default("[]") // Array of scope strings
+
+  // IP and Country Access Restrictions
+  ipRestrictions      Json?   @default("[]") // Array of IP addresses or CIDR ranges
+  countryRestrictions Json?   @default("[]") // Array of country codes (ISO 3166-1 alpha-2)
+  restrictionMode     String? @default("allow") // "allow" or "deny"
+
+  // Quota Management (multiple time periods)
+  minuteQuota  Int? // Requests per minute
+  hourQuota    Int? // Requests per hour
+  dailyQuota   Int? // Requests per day
+  monthlyQuota Int? // Requests per month
+
+  // Current usage counters (these reset based on time periods)
+  currentMinuteUsage  Int      @default(0)
+  currentHourUsage    Int      @default(0)
+  currentDailyUsage   Int      @default(0)
+  currentMonthlyUsage Int      @default(0)
+  lastQuotaResetAt    DateTime @default(now())
+
+  // Origin and Website Restrictions
+  originRestrictions Json? @default("[]") // Array of OriginRestriction objects
+  websiteOrigins     Json? @default("[]") // Array of allowed origins/domains
+
+  // Security and Rate Limiting
+  rateLimitPerSecond Int?    @default(10) // Rate limit per second
+  allowedUserAgents  Json?   @default("[]") // Array of allowed user agent patterns
+  blockedUserAgents  Json?   @default("[]") // Array of blocked user agent patterns
+  requireHttps       Boolean @default(false) // Require HTTPS for all requests
+  allowedMethods     Json?   @default("[\"GET\", \"POST\"]") // Array of allowed HTTP methods
+
+  // Analytics and Monitoring
+  enableAnalytics Boolean @default(true)
+  alertThresholds Json?   @default("{}") // AlertThreshold object
+  webhookUrl      String? // Webhook URL for notifications
+  webhookEvents   Json?   @default("[]") // Array of events that trigger webhooks
+
+  // Usage statistics
+  totalCalls        Int       @default(0)
+  successfulCalls   Int       @default(0)
+  failedCalls       Int       @default(0)
+  lastFailedAt      DateTime?
+  lastFailureReason String?
+
+  // Performance metrics
+  avgResponseTimeMs Int @default(0)
+  p95ResponseTimeMs Int @default(0)
+  p99ResponseTimeMs Int @default(0)
+
+  // Security metrics
+  securityViolations    Int       @default(0)
+  lastSecurityViolation DateTime?
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String?
+
+  // notifications relations
+  //  notification     Notifications[]
+
+  @@unique([projectId, environmentId])
+  @@index([projectId])
+  @@index([key])
+  @@index([userId])
+  @@index([isActive])
+  @@index([expiresAt])
+  @@map("api_keys")
+}
+
+// Rate limiting tracking (for Redis-like functionality in database)
+model ApiKeyRateLimit {
+  id        String   @id @default(cuid(2))
+  apiKeyId  String
+  windowKey String // Format: "apikey_id:timestamp_window"
+  count     Int      @default(1)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([apiKeyId, windowKey])
+  @@index([expiresAt])
+  @@map("api_key_rate_limits")
+}
+
+// API Key usage quotas with time-based windows
+model ApiKeyQuotaWindow {
+  id          String   @id @default(cuid(2))
+  apiKeyId    String
+  windowType  String // minute, hour, day, month
+  windowStart DateTime
+  windowEnd   DateTime
+  usageCount  Int      @default(0)
+  quotaLimit  Int?
+  isExceeded  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([apiKeyId, windowType, windowStart])
+  @@index([windowEnd])
+  @@index([apiKeyId])
+  @@map("api_key_quota_windows")
+}
+
+// Geographic usage statistics
+model ApiKeyGeoStats {
+  id       String   @id @default(cuid(2))
+  apiKeyId String
+  date     DateTime
+  country  String
+  region   String?
+  city     String?
+
+  // Usage metrics
+  requestCount Int @default(0)
+  successCount Int @default(0)
+  errorCount   Int @default(0)
+
+  // Performance metrics
+  avgResponseTime Int    @default(0)
+  totalBytes      BigInt @default(0)
+
+  // Additional data
+  metadata Json? @default("{}")
+
+  @@unique([apiKeyId, date, country, region, city])
+  @@index([date])
+  @@index([country])
+  @@map("api_key_geo_stats")
+}

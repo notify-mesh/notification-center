@@ -1,0 +1,40 @@
+// Project model for different projects
+model Project {
+  id          String   @id @default(cuid(2))
+  name        String
+  description String?
+  slug        String   @unique
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  environments ProjectEnvironment[]
+  members      ProjectMember[]
+  apiKeys      ApiKey[]
+
+  @@map("projects")
+}
+
+// Project environments (stage, production, etc.)
+model ProjectEnvironment {
+  id          String   @id @default(cuid(2))
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   String
+  name        String // production, staging, development
+  description String?
+  isActive    Boolean  @default(true)
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Environment-specific settings
+  settings Json? @default("{}")
+
+  // Relations
+  apiKey ApiKey? // One-to-one relation with ApiKey
+
+  @@unique([projectId, name])
+  @@index([projectId])
+  @@map("project_environments")
+}

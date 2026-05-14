@@ -1,0 +1,45 @@
+// User and project member models
+
+model User {
+  id        String   @id @default(cuid(2))
+  email     String   @unique
+  password  String
+  firstName String?
+  lastName  String?
+  isActive  Boolean  @default(true)
+  role      UserRole @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  projectMembers ProjectMember[]
+  apiKeys        ApiKey[]
+
+  @@map("users")
+}
+
+// Project members with roles
+model ProjectMember {
+  id        String     @id @default(cuid(2))
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  role      MemberRole @default(MEMBER)
+  joinedAt  DateTime   @default(now())
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
