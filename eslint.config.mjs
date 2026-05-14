@@ -10,6 +10,10 @@ const eslintConfig = defineConfig([
     plugins: {
       next: eslintNextPlugin,
     },
+    rules: {
+      "@typescript-eslint/ban-ts-comment": "off",
+      "@typescript-eslint/ban-ts-ignore": "off",
+    },
   },
   ...nextTs,
   prettier,

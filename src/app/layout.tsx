@@ -1,8 +1,13 @@
 import Script from "next/script";
+import { Geist } from "next/font/google";
+import { cn } from "@root/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+
 
 export default function RootLayout({ children }) {
   return (
-    <html>
+    <html className={cn("font-sans", geist.variable)}>
     <head>
       {process.env.NODE_ENV === "development" && (
         <Script

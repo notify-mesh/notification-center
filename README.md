@@ -1,4 +1,25 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/create-next-app).
+A Managed Notification center project based on:
+- Better auth - https://better-auth.com
+- Better notify - https://better-notify.com/docs
+- Nextjs v16 based on App Router
+- Bun
+- Tailwind v4
+- Typescript
+- Prisma v7 - MariaDB
+- Redis - By using the native Bun redis client
+- Shadcn UI Components
+
+
+Supported Providers:
+- Email
+  - Resend Provider
+  - SMTP
+- SMS
+  - Kavenegar
+    - OTP
+    - General SMS
+  - Bale Messenger API - [Document](./docs/bale-messenger-otp.md)
+- Web Push
 
 ## Getting Started
 
