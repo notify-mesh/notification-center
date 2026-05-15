@@ -12,6 +12,7 @@ import {
   BookOpen,
   Activity,
   ShieldCheck,
+  BarChart3,
 } from "lucide-react";
 import type { NavGroupProps } from "./nav-group";
 
@@ -20,6 +21,7 @@ export const sidebarNavGroups: NavGroupProps[] = [
     title: "Overview",
     items: [
       { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+      { title: "Analytics", url: "/analytics", icon: BarChart3 },
       { title: "Activity", url: "/activity", icon: Activity },
     ],
   },

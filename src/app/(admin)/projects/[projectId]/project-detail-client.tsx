@@ -4,6 +4,7 @@ import * as React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
+  BarChart3,
   Box,
   Cog,
   Key,
@@ -13,6 +14,9 @@ import {
   ShieldCheck,
   Trash2,
 } from "lucide-react";
+import { KpiCard } from "@root/components/charts/kpi-card";
+import { AreaChartCard, Sparkline } from "@root/components/charts/area-chart-card";
+import { DonutChartCard } from "@root/components/charts/donut-chart-card";
 import { client } from "@root/lib/orpc/client";
 import { Button } from "@root/components/ui/button";
 import {
@@ -110,8 +114,11 @@ export function ProjectDetailClient({ projectId }: { projectId: string }) {
       </div>
 
       {envId ? (
-        <Tabs defaultValue="channels" className="gap-4">
+        <Tabs defaultValue="analytics" className="gap-4">
           <TabsList>
+            <TabsTrigger value="analytics">
+              <BarChart3 className="size-3.5" /> Analytics
+            </TabsTrigger>
             <TabsTrigger value="channels">
               <Plug className="size-3.5" /> Channels
             </TabsTrigger>
@@ -123,6 +130,9 @@ export function ProjectDetailClient({ projectId }: { projectId: string }) {
             </TabsTrigger>
           </TabsList>
 
+          <TabsContent value="analytics" className="mt-0">
+            <AnalyticsTab projectId={projectId} envId={envId} />
+          </TabsContent>
           <TabsContent value="channels" className="mt-0">
             <ChannelsTab projectId={projectId} envId={envId} />
           </TabsContent>
@@ -582,6 +592,113 @@ function CreateEnvDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ---------- Analytics tab ----------
+function AnalyticsTab({ projectId, envId }: { projectId: string; envId: string }) {
+  const [days, setDays] = React.useState<number>(7);
+  const summaryQuery = useQuery({
+    queryKey: ["analytics", "summary", { projectId, envId, days }],
+    queryFn: async () =>
+      client.analytics.summary({ projectId, environmentId: envId, sinceDays: days }),
+  });
+  const summary = summaryQuery.data;
+
+  if (summaryQuery.isLoading || !summary) {
+    return (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-32 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex items-end gap-2">
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs text-muted-foreground">Range</Label>
+            <Select value={String(days)} onValueChange={(v) => setDays(Number(v))}>
+              <SelectTrigger size="sm" className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">Last 24h</SelectItem>
+                <SelectItem value="7">Last 7 days</SelectItem>
+                <SelectItem value="14">Last 14 days</SelectItem>
+                <SelectItem value="30">Last 30 days</SelectItem>
+                <SelectItem value="90">Last 90 days</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <a
+            href={`/analytics/export?projectId=${projectId}&environmentId=${envId}&since=${summary.range.since}&until=${summary.range.until}`}
+            download
+          >
+            <Trash2 className="rotate-90" />
+            Export CSV
+          </a>
+        </Button>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <KpiCard
+          label="Sent"
+          value={summary.totals.sent}
+          hint={`${summary.totals.deliveryRatePct}% delivery rate`}
+          delta={summary.prior.sent === 0 ? null : Math.round(((summary.totals.sent - summary.prior.sent) / summary.prior.sent) * 1000) / 10}
+          trail={<Sparkline data={summary.timeline} xKey="bucket" dataKey="sent" color="var(--chart-1)" />}
+        />
+        <KpiCard
+          label="Failed"
+          value={summary.totals.failed}
+          hint={`${summary.totals.failureRatePct}% failure rate`}
+          trail={<Sparkline data={summary.timeline} xKey="bucket" dataKey="failed" color="var(--destructive)" />}
+        />
+        <KpiCard
+          label="Latency p95"
+          value={`${summary.latency.p95} ms`}
+          hint={`p50 ${summary.latency.p50}ms`}
+        />
+        <KpiCard
+          label="Cost"
+          value={summary.costIrr.total.toLocaleString()}
+          hint="IRR"
+        />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <AreaChartCard
+          title="Send volume"
+          description={`Bucketed by ${summary.range.bucket}`}
+          data={summary.timeline}
+          xKey="bucket"
+          series={[
+            { dataKey: "sent", label: "Sent", color: "var(--chart-1)" },
+            { dataKey: "failed", label: "Failed", color: "var(--destructive)" },
+          ]}
+          className="lg:col-span-2"
+          xTickFormatter={(s) => s.slice(5)}
+          showYAxis
+        />
+        <DonutChartCard
+          title="Channel mix"
+          description="Share of successful sends"
+          data={summary.byChannel.map((c, i) => ({
+            name: c.channel,
+            value: c.sent,
+            color: `var(--chart-${(i % 5) + 1})`,
+          }))}
+          centerLabel={summary.totals.sent.toLocaleString()}
+          centerSub="total sent"
+        />
+      </div>
+    </div>
   );
 }
 

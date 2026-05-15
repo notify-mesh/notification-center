@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
+  BarChart3,
   Building2,
   FileText,
   Fingerprint,
@@ -107,6 +108,7 @@ function CommandPaletteDialog() {
 
   const NAVIGATION: NavCommand[] = [
     { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard", shortcut: "G D" },
+    { label: "Analytics", icon: BarChart3, href: "/analytics", shortcut: "G N" },
     { label: "Activity", icon: Activity, href: "/activity", shortcut: "G A" },
     { label: "Organizations", icon: Building2, href: "/organizations" },
     { label: "Teams", icon: Users, href: "/teams" },

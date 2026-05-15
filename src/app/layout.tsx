@@ -26,6 +26,8 @@ export default function RootLayout({
           <Script
             src="//unpkg.com/react-grab/dist/index.global.js"
             crossOrigin="anonymous"
+            async
+            defer
             strategy="beforeInteractive"
             data-options={JSON.stringify({
               activationMode: "hold",
