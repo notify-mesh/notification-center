@@ -1,92 +1,51 @@
 // =============================================================================
-// Session — Better Auth session row
-// UserDevice — distinct device fingerprints surfaced in the admin panel.
-// A Session optionally links to a UserDevice so the admin can see "this user
-// is signed in on these 3 devices" rather than "these 3 raw user-agents".
+// UserDevice — multi-device management surfaced in the admin panel.
+//
+// NOTE: there is intentionally NO `Session` model here. Better Auth is wired
+// with `secondaryStorage` (Redis) in src/lib/auth.ts, so all session state
+// lives in Redis. `get-tables.mjs` in @better-auth/core skips the session
+// table when secondaryStorage is set and `session.storeSessionInDatabase`
+// isn't explicitly true.
+//
+// UserDevice is OUR registry: every time a new fingerprint signs in we upsert
+// a row here and link the Redis session value's `deviceId` to it. The admin
+// "Devices" tab reads this table; revocations are done in Redis (revoke that
+// session) AND here (`revokedAt` so future sessions can't reuse the device).
 // =============================================================================
 
-model Session {
-  id                    String        @id @default(cuid(2))
-  token                 String        @unique
-  userId                String
-  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt             DateTime
-
-  // Network context
-  ipAddress             String?
-  userAgent             String?       @db.Text
-
-  // admin plugin — set when an admin is impersonating
-  impersonatedBy        String?
-
-  // organization plugin — currently active org / team in the session
-  activeOrganizationId  String?
-  activeTeamId          String?
-
-  // Multi-device tracking
-  deviceId              String?
-  device                UserDevice?   @relation(fields: [deviceId], references: [id], onDelete: SetNull)
-
-  // Geo (resolved from ipAddress at create-time)
-  country               String?
-  region                String?
-  city                  String?
-
-  // Last-login-method plugin can correlate to the auth method used
-  loginMethod           String?
-
-  // Revocation
-  revokedAt             DateTime?
-  revokedReason         String?
-  revokedByUserId       String?       // null = self / system
-
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
-
-  @@index([userId, expiresAt])
-  @@index([deviceId])
-  @@index([activeOrganizationId])
-  @@index([impersonatedBy])
-  @@index([revokedAt])
-  @@map("sessions")
-}
-
-// Multi-device management: a row per (user, deviceFingerprint)
 model UserDevice {
-  id              String        @id @default(cuid(2))
+  id              String     @id @default(cuid(2))
   userId          String
-  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Stable hashed fingerprint of the device (computed app-side from UA, screen, fonts, etc.)
   fingerprint     String
 
   // Display in admin panel
-  name            String?       // user-set, e.g. "Ali's MacBook Pro"
-  deviceType      DeviceType    @default(UNKNOWN)
-  os              String?       // "macOS 15.5", "iOS 18", "Android 14"
+  name            String?    // user-set, e.g. "Ali's MacBook Pro"
+  deviceType      DeviceType @default(UNKNOWN)
+  os              String?    // "macOS 15.5", "iOS 18", "Android 14"
   osVersion       String?
   browser         String?
   browserVersion  String?
-  manufacturer    String?       // "Apple", "Samsung"
-  model           String?       // "iPhone 16 Pro"
+  manufacturer    String?    // "Apple", "Samsung"
+  model           String?    // "iPhone 16 Pro"
 
   // Trust signals — used by 2FA's "trust this device for 30 days"
-  trusted         Boolean       @default(false)
+  trusted         Boolean    @default(false)
   trustedUntil    DateTime?
 
   // Last seen
-  lastSeenAt      DateTime      @default(now())
+  lastSeenAt      DateTime   @default(now())
   lastSeenIp      String?
   lastSeenCountry String?
 
-  // Revocation (admin can revoke a device, killing all its sessions)
+  // Revocation (admin can revoke a device, killing all its future sign-ins)
   revokedAt       DateTime?
   revokedReason   String?
 
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  sessions        Session[]
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
   @@unique([userId, fingerprint])
   @@index([userId, lastSeenAt])

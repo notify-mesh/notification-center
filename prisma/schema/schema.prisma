@@ -1,8 +1,274 @@
 generator client {
-	provider        = "prisma-client-js"
-	previewFeatures = ["relationJoins", "views", "typedSql"]
+  provider        = "prisma-client-js"
+  previewFeatures = ["relationJoins", "views", "typedSql"]
 }
 
 datasource db {
-	provider = "mysql"
+  provider = "mysql"
+}
+
+model User {
+  id                  String    @id
+  name                String    @db.Text
+  email               String
+  emailVerified       Boolean   @default(false)
+  image               String?   @db.Text
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  lastLoginMethod     String?   @db.Text
+  twoFactorEnabled    Boolean?  @default(false)
+  role                String?   @db.Text
+  banned              Boolean?  @default(false)
+  banReason           String?   @db.Text
+  banExpires          DateTime?
+  phoneNumber         String?
+  phoneNumberVerified Boolean?
+  username            String?
+  displayUsername     String?   @db.Text
+
+  // ---- Custom business fields (preserved across `bun run auth:generate`) ----
+  locale              String?     @default("fa-IR")
+  timezone            String?     @default("Asia/Tehran")
+  sessionMode         SessionMode @default(MULTI)
+  maxSessions         Int         @default(3)
+  lastLoginAt         DateTime?
+  isActive            Boolean     @default(true)
+  deletedAt           DateTime?
+  passwordCompromised Boolean     @default(false)
+  passwordChangedAt   DateTime?
+
+  // ---- Better Auth back-relations (managed by the CLI) ----
+  accounts    Account[]
+  teammembers TeamMember[]
+  members     Member[]
+  invitations Invitation[]
+  twofactors  TwoFactor[]
+  passkeys    Passkey[]
+
+  // ---- Business back-relations (referenced from business schema files) ----
+  devices       UserDevice[]
+  authAuditLogs AuthAuditLog[]
+  aclUserRoles  AclUserRole[]
+  apiKeys       ApiKey[]
+
+  @@unique([email])
+  @@unique([phoneNumber])
+  @@unique([username])
+  @@map("user")
+}
+
+enum SessionMode {
+  SINGLE
+  MULTI
+}
+
+model Account {
+  id                    String    @id
+  accountId             String    @db.Text
+  providerId            String    @db.Text
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?   @db.Text
+  refreshToken          String?   @db.Text
+  idToken               String?   @db.Text
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?   @db.Text
+  password              String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId(length: 191)])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String   @db.Text
+  value      String   @db.Text
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier(length: 191)])
+  @@map("verification")
+}
+
+model Organization {
+  id        String   @id
+  name      String   @db.Text
+  slug      String
+  logo      String?  @db.Text
+  createdAt DateTime
+  metadata  String?  @db.Text
+
+  // ---- Custom business fields (preserved across `bun run auth:generate`) ----
+  // Sub-organization hierarchy (self-relation)
+  parentOrganizationId String?
+  parent               Organization?  @relation("OrganizationHierarchy", fields: [parentOrganizationId], references: [id], onDelete: Restrict)
+  children             Organization[] @relation("OrganizationHierarchy")
+  hierarchyPath        String?
+  depth                Int            @default(0)
+
+  // Quotas / limits (override-able on children)
+  maxProjects         Int?
+  maxMembers          Int?
+  maxTeams            Int?
+  maxSubOrganizations Int?
+
+  // Contact + locale
+  billingEmail String?
+  contactPhone String?
+  country      String?
+  timezone     String? @default("Asia/Tehran")
+
+  // Lifecycle
+  isActive   Boolean   @default(true)
+  archivedAt DateTime?
+  updatedAt  DateTime  @updatedAt
+
+  // ---- Better Auth back-relations (managed by the CLI) ----
+  organizationroles OrganizationRole[]
+  teams             Team[]
+  members           Member[]
+  invitations       Invitation[]
+
+  // ---- Business back-relations ----
+  projects     Project[]
+  aclRoles     AclRole[]
+  aclUserRoles AclUserRole[]
+
+  @@unique([slug])
+  @@index([parentOrganizationId])
+  @@index([hierarchyPath])
+  @@map("organization")
+}
+
+model OrganizationRole {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role           String       @db.Text
+  permission     String       @db.Text
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime?    @updatedAt
+
+  @@index([organizationId(length: 191)])
+  @@index([role(length: 191)])
+  @@map("organizationRole")
+}
+
+model Team {
+  id             String       @id
+  name           String       @db.Text
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime
+  updatedAt      DateTime?    @updatedAt
+  teammembers    TeamMember[]
+
+  @@index([organizationId(length: 191)])
+  @@map("team")
+}
+
+model TeamMember {
+  id        String    @id
+  teamId    String
+  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime?
+
+  @@index([teamId(length: 191)])
+  @@index([userId(length: 191)])
+  @@map("teamMember")
+}
+
+model Member {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String       @db.Text
+  createdAt      DateTime
+
+  @@index([organizationId(length: 191)])
+  @@index([userId(length: 191)])
+  @@map("member")
+}
+
+model Invitation {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String       @db.Text
+  role           String?      @db.Text
+  teamId         String?      @db.Text
+  status         String       @db.Text
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+  inviterId      String
+  user           User         @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId(length: 191)])
+  @@index([email(length: 191)])
+  @@map("invitation")
+}
+
+model TwoFactor {
+  id          String   @id
+  secret      String   @db.Text
+  backupCodes String   @db.Text
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verified    Boolean? @default(true)
+
+  @@index([secret(length: 191)])
+  @@index([userId(length: 191)])
+  @@map("twoFactor")
+}
+
+model DeviceCode {
+  id              String    @id
+  deviceCode      String    @db.Text
+  userCode        String    @db.Text
+  userId          String?   @db.Text
+  expiresAt       DateTime
+  status          String    @db.Text
+  lastPolledAt    DateTime?
+  pollingInterval Int?
+  clientId        String?   @db.Text
+  scope           String?   @db.Text
+
+  @@map("deviceCode")
+}
+
+model Passkey {
+  id           String    @id
+  name         String?   @db.Text
+  publicKey    String    @db.Text
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialID String    @db.Text
+  counter      Int
+  deviceType   String    @db.Text
+  backedUp     Boolean
+  transports   String?   @db.Text
+  createdAt    DateTime?
+  aaguid       String?   @db.Text
+
+  @@index([userId(length: 191)])
+  @@index([credentialID(length: 191)])
+  @@map("passkey")
+}
+
+model Jwks {
+  id         String    @id
+  publicKey  String    @db.Text
+  privateKey String    @db.Text
+  createdAt  DateTime
+  expiresAt  DateTime?
+
+  @@map("jwks")
 }

@@ -161,6 +161,13 @@ export const auth = betterAuth({
       expiresIn: "10m",
       interval: "5s",
       userCodeLength: 6,
+      // Workaround for better-auth@1.6.11: the plugin's Zod options schema
+      // declares `schema: z.custom(() => true)` WITHOUT .optional(), so Zod v4
+      // rejects the call when the field is omitted — even though the plugin
+      // actually treats it as optional (mergeSchema(schema, options?.schema)).
+      // An empty object satisfies z.parse() and leaves the default table
+      // (`device_codes`) untouched. Drop this once upstream releases a fix.
+      schema: {},
     }),
     admin({
       bannedUserMessage: "You are banned from using this application.",
