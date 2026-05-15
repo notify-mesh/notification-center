@@ -4,6 +4,7 @@ import { Bell, Search } from "lucide-react";
 import { Button } from "@root/components/ui/button";
 import { Badge } from "@root/components/ui/badge";
 import { useCommandPalette } from "@root/components/layout/command-palette";
+import { ThemeToggle } from "@root/components/theme/theme-toggle";
 
 export function HeaderActions({ email }: { email: string }) {
   const palette = useCommandPalette();
@@ -31,6 +32,7 @@ export function HeaderActions({ email }: { email: string }) {
         >
           <Search className="size-4" />
         </Button>
+        <ThemeToggle />
         <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
           <Bell className="size-4" />
           <Badge

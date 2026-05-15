@@ -1,6 +1,7 @@
 import Script from "next/script";
 import { DM_Mono } from "next/font/google";
 import { cn } from "@root/lib/utils";
+import { ThemeProvider } from "@root/components/theme/theme-provider";
 import "@root/global.css";
 import "@root/lib/orpc/server-client";
 import type React from "react";
@@ -20,7 +21,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html className={cn("font-mono", dmMono.variable)}>
+    // suppressHydrationWarning is required so next-themes' pre-hydration
+    // script can swap the `class` on <html> before React reconciles without
+    // tripping the dev-time hydration warning.
+    <html className={cn("font-mono", dmMono.variable)} suppressHydrationWarning>
       <head>
         {process.env.NODE_ENV === "development" && (
           <Script
@@ -39,7 +43,9 @@ export default function RootLayout({
           />
         )}
       </head>
-      <body>{children}</body>
+      <body>
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }
