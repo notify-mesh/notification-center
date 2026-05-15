@@ -50,6 +50,7 @@ import {
 } from "@root/components/ui/table";
 import { MarkdownEditor } from "@root/components/ui/markdown-editor";
 import { Markdown } from "@root/components/ui/markdown";
+import { UserMultiSelect } from "@root/components/notify/user-multi-select";
 import { KpiCard } from "@root/components/charts/kpi-card";
 import { BarChartCard } from "@root/components/charts/bar-chart-card";
 import { DonutChartCard } from "@root/components/charts/donut-chart-card";
@@ -77,9 +78,7 @@ export function NotificationsClient() {
         <TabsTrigger value="sent">
           <Send className="size-3.5" /> Sent
         </TabsTrigger>
-        <TabsTrigger value="analytics" disabled={!selectedSentId}>
-          Analytics
-        </TabsTrigger>
+        <TabsTrigger value="analytics">Analytics</TabsTrigger>
       </TabsList>
 
       <TabsContent value="inbox" className="mt-0">
@@ -108,7 +107,7 @@ export function NotificationsClient() {
             onBack={() => setTab("sent")}
           />
         ) : (
-          <p className="text-sm text-muted-foreground">Select a sent notification first.</p>
+          <AnalyticsPickerPanel onPick={setSelectedSentId} />
         )}
       </TabsContent>
     </Tabs>
@@ -473,7 +472,7 @@ function ComposePanel({ onSent }: { onSent: (id: string) => void }) {
   const [pickedOrgId, setOrgId] = React.useState<string>("");
   const [projectId, setProjectId] = React.useState<string>("");
   const [teamId, setTeamId] = React.useState<string>("");
-  const [userIdsInput, setUserIdsInput] = React.useState("");
+  const [selectedUserIds, setSelectedUserIds] = React.useState<string[]>([]);
   const [actionEnabled, setActionEnabled] = React.useState(false);
   const [actionLabel, setActionLabel] = React.useState("Open");
   const [actionUrl, setActionUrl] = React.useState("https://");
@@ -514,14 +513,12 @@ function ComposePanel({ onSent }: { onSent: (id: string) => void }) {
       case "TEAM":
         return teamId ? { kind: "TEAM", teamId } : null;
       case "USERS": {
-        const ids = userIdsInput
-          .split(/[,\s\n]+/)
-          .map((s) => s.trim())
-          .filter(Boolean);
-        return ids.length > 0 ? { kind: "USERS", userIds: ids } : null;
+        return selectedUserIds.length > 0
+          ? { kind: "USERS", userIds: selectedUserIds }
+          : null;
       }
     }
-  }, [audienceKind, orgId, projectId, teamId, userIdsInput]);
+  }, [audienceKind, orgId, projectId, teamId, selectedUserIds]);
 
   const previewQuery = useQuery({
     queryKey: ["internal-notify", "audience-preview", target],
@@ -561,6 +558,7 @@ function ComposePanel({ onSent }: { onSent: (id: string) => void }) {
       setBody("");
       setActionEnabled(false);
       setCategory("");
+      setSelectedUserIds([]);
       onSent(res.id);
     },
     onError: (e: Error) => toast.error(e.message),
@@ -762,15 +760,17 @@ function ComposePanel({ onSent }: { onSent: (id: string) => void }) {
             ) : null}
             {audienceKind === "USERS" ? (
               <div className="grid gap-2">
-                <Label htmlFor="user-ids">User IDs</Label>
-                <Input
-                  id="user-ids"
-                  value={userIdsInput}
-                  onChange={(e) => setUserIdsInput(e.target.value)}
-                  placeholder="paste comma- or newline-separated user ids"
+                <Label>Recipients</Label>
+                <UserMultiSelect
+                  value={selectedUserIds}
+                  onChange={setSelectedUserIds}
+                  maxSelected={500}
+                  placeholder="Search by name, email, username, or phone…"
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  Only ids in your organizations are accepted (super-admin bypasses this).
+                  {opts?.isAdmin
+                    ? "Super-admin — every active user is searchable."
+                    : "You can pick anyone who shares an organization with you."}
                 </p>
               </div>
             ) : null}
@@ -1013,6 +1013,73 @@ function SentPanel({ onOpenAnalytics }: { onOpenAnalytics: (id: string) => void 
 // ───────────────────────────────────────────────────────────────────────
 // Analytics
 // ───────────────────────────────────────────────────────────────────────
+
+function AnalyticsPickerPanel({ onPick }: { onPick: (id: string) => void }) {
+  const outboxQuery = useQuery({
+    queryKey: ["internal-notify", "outbox"],
+    queryFn: async () => client.internalNotify.outbox({ limit: 30 }),
+  });
+
+  if (outboxQuery.isLoading) return <Skeleton className="h-64 w-full" />;
+  const items = outboxQuery.data?.items ?? [];
+
+  if (items.length === 0) {
+    return (
+      <EmptyState
+        icon={Send}
+        title="Nothing to analyse yet"
+        body="Send your first notification from the Compose tab. Once it's out, you'll be able to drill into delivery, read rates, and click-through right here."
+      />
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Pick a sent notification to analyse</CardTitle>
+          <CardDescription>
+            Showing your latest sends. Click any row to see read rate, click-through, and
+            recipient breakdown.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-0 pb-0">
+          <ul className="divide-y">
+            {items.map((n) => {
+              const readPct =
+                n.recipientCount === 0 ? 0 : Math.round((n.readCount / n.recipientCount) * 100);
+              return (
+                <li key={n.id}>
+                  <button
+                    type="button"
+                    onClick={() => onPick(n.id)}
+                    className="flex w-full items-center gap-3 px-6 py-3 text-left transition hover:bg-muted/40"
+                  >
+                    <SeverityIcon severity={n.severity} small />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{n.title}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {n.audienceLabel} · {new Date(n.sentAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="text-right text-xs">
+                      <p className="font-medium tabular-nums">
+                        {n.readCount} / {n.recipientCount} read
+                      </p>
+                      <Badge variant="secondary" className="mt-0.5 text-[10px]">
+                        {readPct}%
+                      </Badge>
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 function AnalyticsPanel({
   notificationId,

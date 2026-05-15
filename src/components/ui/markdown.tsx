@@ -2,16 +2,66 @@
 
 import * as React from "react";
 import { marked } from "marked";
-import DOMPurify from "isomorphic-dompurify";
+import sanitizeHtml from "sanitize-html";
 import { cn } from "@root/lib/utils";
 
 /**
- * Render a markdown string as sanitised HTML.
+ * Render a Markdown string as sanitized HTML.
  *
- * `marked` parses to HTML, then `isomorphic-dompurify` strips anything
- * unsafe (script tags, on* handlers, javascript: hrefs, …). The injection
- * call only sees post-sanitiser strings.
+ * Pipeline:
+ *   1. `marked` parses to HTML.
+ *   2. `sanitize-html` strips anything unsafe (script tags, on* handlers,
+ *      `javascript:` hrefs, …).
+ *
+ * `sanitize-html` is a pure-JS parser (htmlparser2). It works the same in
+ * the browser and on the server with no DOM polyfill, so this component
+ * renders correctly during SSR without pulling in jsdom.
  */
+
+const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
+  allowedTags: [
+    "p",
+    "br",
+    "hr",
+    "blockquote",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "strong",
+    "em",
+    "del",
+    "code",
+    "pre",
+    "ul",
+    "ol",
+    "li",
+    "a",
+    "img",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
+    "span",
+  ],
+  allowedAttributes: {
+    a: ["href", "target", "rel", "title"],
+    img: ["src", "alt", "title", "width", "height"],
+    span: ["class"],
+    code: ["class"],
+    pre: ["class"],
+  },
+  allowedSchemes: ["http", "https", "mailto", "tel"],
+  // Force every link to open in a new tab without leaking opener / referrer.
+  transformTags: {
+    a: sanitizeHtml.simpleTransform("a", { target: "_blank", rel: "noopener noreferrer" }),
+  },
+};
+
 export function Markdown({
   source,
   className,
@@ -24,14 +74,12 @@ export function Markdown({
   const html = React.useMemo(() => {
     const raw = inline ? marked.parseInline(source ?? "") : marked.parse(source ?? "");
     const stringified = typeof raw === "string" ? raw : "";
-    return DOMPurify.sanitize(stringified, {
-      USE_PROFILES: { html: true },
-      ADD_ATTR: ["target", "rel"],
-    });
+    return sanitizeHtml(stringified, SANITIZE_OPTIONS);
   }, [source, inline]);
 
+  // The HTML reaching this point is post-sanitizer, so injection is safe.
   // Build the inner-HTML prop indirectly so static scanners can see the
-  // value is post-DOMPurify. The runtime behaviour is identical.
+  // value is post-sanitization.
   const innerProps = { __html: html };
   return React.createElement("div", {
     className: cn(

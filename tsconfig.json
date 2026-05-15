@@ -2,6 +2,7 @@
   "compilerOptions": {
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
+    "tsBuildInfoFile": "./node_modules/.cache/tsconfig.tsbuildinfo",
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
