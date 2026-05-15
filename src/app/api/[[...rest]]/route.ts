@@ -1,6 +1,10 @@
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
-import { ZodToJsonSchemaConverter } from "@orpc/zod";
+// `@orpc/zod/zod4` is the Zod v4-compatible converter; the default
+// `@orpc/zod` entry only understands Zod v3 internals and silently no-ops
+// on v4 schemas, which would collapse every input to `any` and break
+// dynamic-path-param validation in the OpenAPI generator.
+import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 import { onError, ORPCError } from "@orpc/server";
 import {
   CORSPlugin,

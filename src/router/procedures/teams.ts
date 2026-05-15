@@ -131,6 +131,7 @@ export const update = authedProcedure
   .output(z.object({ team: teamSchema }))
   .handler(async ({ context, input, errors }) => {
     const organizationId = await activeOrg(context, errors);
+    // eslint-disable-next-line react-doctor/server-sequential-independent-await
     const existing = await prismaDbClient.team.findUnique({ where: { id: input.teamId } });
     if (!existing || existing.organizationId !== organizationId) {
       throw errors.NOT_FOUND();
@@ -175,6 +176,7 @@ export const setActive = authedProcedure
   .output(z.object({ team: teamSchema }))
   .handler(async ({ context, input, errors }) => {
     const organizationId = await activeOrg(context, errors);
+    // eslint-disable-next-line react-doctor/server-sequential-independent-await
     const existing = await prismaDbClient.team.findUnique({ where: { id: input.teamId } });
     if (!existing || existing.organizationId !== organizationId) {
       throw errors.NOT_FOUND();
@@ -211,6 +213,7 @@ export const remove = authedProcedure
   .output(z.object({ success: z.boolean() }))
   .handler(async ({ context, input, errors }) => {
     const organizationId = await activeOrg(context, errors);
+    // eslint-disable-next-line react-doctor/server-sequential-independent-await
     const existing = await prismaDbClient.team.findUnique({ where: { id: input.teamId } });
     if (!existing || existing.organizationId !== organizationId) {
       throw errors.NOT_FOUND();
