@@ -1,3 +1,8 @@
+/**
+ * Name: Kavenegar SMS Provider
+ * Type: SMS
+ */
+
 import https from "https";
 import { stringify as qsStringify } from "querystring";
 
