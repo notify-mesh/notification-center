@@ -1521,6 +1521,31 @@
       "sourceType": "github",
       "computedHash": "12278a68744405e3cd20e417115d23e3ba804bb7e98001ef3809dd9cc2aaef64"
     },
+    "Mini oRPC Beyond the Basics": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "22d5d4c96fd039ff4dd93cc616792b599a036c044af1d8401f74fb8b785270ca"
+    },
+    "Mini oRPC Client-side Client": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "62c870dcb9f89b7c07c517d9eb6f0068c866f6a6c27b7631f01081f045e548d3"
+    },
+    "Mini oRPC Overview": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "4fbf6e90cc0b21c4771ee6d51398b652601d84ca66b102dfc9b100eb802fbf12"
+    },
+    "Mini oRPC Procedure Builder": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "006973f2840904c9bfd1750f77db516a0b1805d5f654e722be5c0f28f8f5714f"
+    },
+    "Mini oRPC Server-side Client": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "6c876b3ceeb8b2c82c0b884443e708716d8dcb38633e9322a3b12b75858c40eb"
+    },
     "better-auth-best-practices": {
       "source": "better-auth/skills",
       "sourceType": "github",
@@ -1545,6 +1570,561 @@
       "source": "better-auth/skills",
       "sourceType": "github",
       "computedHash": "747d7f73bd9e2ec5317b8ef88dc70f97df716d00e3d02de4051feebaa48b062d"
+    },
+    "oRPC AI SDK Integration": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "e6c2019b769320f83ec03f44362fbd7a8e34c84234912723eda827f2414859cc"
+    },
+    "oRPC Astro Adapter": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "1b08b812d186676fe1236c354e2ea9a41ce7d47b4ed7baf49abc603b3ab80438"
+    },
+    "oRPC Base64Url Helpers": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "3c7b080fbd22441440f844082b111e96d910cb72c6df3449a882076b3004c695"
+    },
+    "oRPC Batch Requests Plugin": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "a90e659f312a410419cea958d777558ee9e3faa1f89e5e6ab1b4c598ebd587ba"
+    },
+    "oRPC Better Auth Integration": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "2c00d99ffb3fb994d8c9841434994464953c5e00431f91fb0a25faae5ce96dbd"
+    },
+    "oRPC Body Limit Plugin": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "9a059636e9fc206466e763fe8cbce56b4d0a5d697b34de9ccfbe35fe3b1eb524"
+    },
+    "oRPC Bracket Notation": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "3ad65e8076123c88e81ab91b9757232a68370ace281f5f58422ef3c6f8aff13e"
+    },
+    "oRPC Browser Adapter": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "758327ec4a6fab49ab79d627050cb51a8931fec29a3b8df5b33cddbfb50c76ad"
+    },
+    "oRPC Building Custom Plugins": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "bf8d0e41bd1569dc7969a2b408d8e5600a32fcedc95f0ddd257ba184a946f365"
+    },
+    "oRPC CORS Plugin": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "0c7459c8e729d8e3a70dcc7c81cbe41c2b33bdc87a2a97d8c87738ee8c4f9ead"
+    },
+    "oRPC Client Error Handling": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "4902c8d56a31a6fbbe50895e9a889cb019cff2ce2306b708cceb13375ef60615"
+    },
+    "oRPC Client Event Iterator": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "f0ee3b570d83201ed3f6e1c5a1137f3f3904e49a5bcc5aa92066f15b324b8b94"
+    },
+    "oRPC Client Retry Plugin": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "1e7493a32df4be56bdcb854579ef8557facd1e5d069f979039b95ba7ad89502e"
+    },
+    "oRPC Client-Side Clients": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "1e3922d191b57527a39796c853f2257b1638dea47814c40af36118dd0fc0f078"
+    },
+    "oRPC Comparison": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "769e95aca7f560fe3ebd1308477c53f1ec6f30966f5c8bd1fa74601f79c68c7c"
+    },
+    "oRPC Compression Plugin": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "5a5bc0dfca9aec5b7d98ed0af40d1756537417c3981c62c49fb4ef312fc6f57d"
+    },
+    "oRPC Context": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "03d1838cc50921907644b34a07bcdbf387aae2603a0c8f2fc1feb42d5bcf61cd"
+    },
+    "oRPC Cookie Helpers": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "c2d6bdca249efc51078681e0feb38177e699745982695e1d196cacb09925f4d2"
+    },
+    "oRPC Customizing Error Response": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "42ce2e358ac076843da5986430b8b1790561c30c86d5ffbd1d9bccd9e8838c07"
+    },
+    "oRPC Dedupe Middleware": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "0735801748b9fbd2944090f0546d442fbacbf95f57b0d29ef023101327f09c25"
+    },
+    "oRPC Dedupe Requests Plugin": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "6c998c2751da0cdfa33c8bfcc27c27b5fd8cad03cb28044c7aca8201aca3b615"
+    },
+    "oRPC Define Contract": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "cb3af329c3d78acf8bf948f412af5660c7a734f58edc087936a0dacd9ddb1364"
+    },
+    "oRPC Disabling Output Validation": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "96bdcb1286ae5c70b6d7fd96bba87377a31c0e2242d09e1991214e72caa9bbe5"
+    },
+    "oRPC Durable Iterator Integration": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "1053347db2b8a39ef8570c606d0f0f9dd5644b1ad88431fdb7682106276dc0fe"
+    },
+    "oRPC DynamicLink": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "349c50fb0ff3204f12a23746c1328198cbc21a0fd1fce8f346ef940bdfbecd05"
+    },
+    "oRPC Ecosystem": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "fc5a596d2f29ba5a520ce3fe67731a3b521fdcda6121d2a46258a2ffc799140c"
+    },
+    "oRPC Electron Adapter": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "35f72b024f6e82d2167ce375f04ce1569b76b9795d44a3c85ca1ded1fd3cff55"
+    },
+    "oRPC Elysia Adapter": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "ef888fb832d65171385d8ac0b87eba553db7c565dd6f7f962be1978810cbf0d4"
+    },
+    "oRPC Encryption Helpers": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "f2ce12ebbf0445a08c2b8e93dfc147b34d37770d412076154ff0260288613d63"
+    },
+    "oRPC Error Handling": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "b7b42436f0be7a519c0bb5c0303f69f696b6eaa67fea050ff635eb5a41266990"
+    },
+    "oRPC Event Iterator (SSE)": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "23a04a7dba3c9ecb4ae09bf8086560c55352fb19e9da2a102afdc61f61b2b04c"
+    },
+    "oRPC Exceeds Maximum Length Problem": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "55f48b20dc9c5c2cfcee3323661e3d3ed85faafcf6f7ab729cfd99093e353576"
+    },
+    "oRPC Expanding OpenAPI Link Types": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "f14ea76a1551a13564d49d2eb3aa2320188e2af74db9588da16130f0f7dd24ee"
+    },
+    "oRPC Express.js Adapter": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "02b8afd4e75448de656f36fc10b4afc32fd52ca2d299ee6ca8df3d61c34f676a"
+    },
+    "oRPC Extend Body Parser": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "a90cf106bc36351bbfcdaf48dade896b3154aa004484d5f838220cc2eaff65b6"
+    },
+    "oRPC Fastify Adapter": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "79a5cd8531b55b536ff8a78132e8db89fc9d24c14fd288195d0d92583a7ac2bd"
+    },
+    "oRPC File Upload/Download": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "4ec4637318777fbaeed190a207103e90d112f9d08b66c5fef05d51acba2e0866"
+    },
+    "oRPC Form Data Helpers": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "f6bb113e59249fa911b0b9a2a5c12f7baacaa13b5c6a4d3e7e5bdcd15f42b46e"
+    },
+    "oRPC Getting Started": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "f1f08bd8995aa979460e421f080ca918471eafd6cc65f6506ebc0715a252f637"
+    },
+    "oRPC H3 Adapter": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "866ee9cc63d98badce35a03b93a166807fa515624810a1db3e2a29039cc2625f"
+    },
+    "oRPC HTTP Adapter": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "0ec1015f906dc0393da38ccfe20c14877445d6cc0f45ba410f57019aa2e25663"
+    },
+    "oRPC Hey API Integration": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "2031301eefb036b21b37aceaea56d806975a0c2b9db2ddb6029a732133a5e207"
+    },
+    "oRPC Hibernation Plugin": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "b3abc278fae5320d77a66a6d9898f6d0789363c9f8100c5d7bc4c5e8a1650491"
+    },
+    "oRPC Hono Adapter": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "d12921b89a9fc987fb82eb943186c21273ab4bb2889d902dbb816fb9b49986e5"
+    },
+    "oRPC Implement Contract": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "262efd3a3a45346b6af9b8f8c1f2702031d95ff1dc778e8437cef87849e777e5"
+    },
+    "oRPC Input/Output Structure": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "ab522e2610695c47c99a07eeaae0c5f9a42985a7b881e3fea89d6996a2b410ca"
+    },
+    "oRPC Message Port": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "d21117d76477bc0b830b1c36be36676b6083c24ba7ef0f185ed162ceb89f907e"
+    },
+    "oRPC Metadata": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "c8603e8591b12cc11f63944823f55db298e86f8f3d8be7d6de156fb95035c731"
+    },
+    "oRPC Middleware": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "ed93a99a79d93c3e3d05ef1c16e5d1451d7b6d3db8882b1d69aca8b4a3eb792d"
+    },
+    "oRPC Migrate from tRPC": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "ad36c8526853744dbd38a4d751b0a15e55030ada7e322bf0449498bfd7c9e356"
+    },
+    "oRPC Monorepo Setup": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "b0329e28cf5404a1d59c123bf5973ab29b330345964a4662ab29bb2e0778a94b"
+    },
+    "oRPC NestJS Implement Contract": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "f1cb44d72b09f36406a32f8ce4eca330caaefd933680f3160386ff6a1423487e"
+    },
+    "oRPC Next.js Adapter": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "e9868bb4a6454ffdb688d4299384dee6aebe92b410c9ea5c611cef87e860e477"
+    },
+    "oRPC No Throw Literal": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "62041b8b69b5857f34d8753d176efeabdea93a55709c2a333b600860fd5ce2d2"
+    },
+    "oRPC Nuxt.js Adapter": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "7f6e1f9e0fbfdb9b872c0e32bc32fb4fd096f3480b807ae3a605bed60cab11e8"
+    },
+    "oRPC OpenAI Streaming Example": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "ca9fb1a58fc55e0ebd402ae8e861ed4c193e7b77e52d41e9f4b8f855b1887f83"
+    },
+    "oRPC OpenAPI Error Handling": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "db43e36187f564842dfa5e227208d07146a482bca9bdabfb1df823fe881fc7dc"
+    },
+    "oRPC OpenAPI Getting Started": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "a97f54137bf0d2973ff9c9e47a4b772f0253b71c8ae3a683590eda42ad41a73e"
+    },
+    "oRPC OpenAPI Handler": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "4388a3c6cbbd75073f9a2362dccc276f4248b6ec42abd4ad3657c00a3bbae727"
+    },
+    "oRPC OpenAPI JSON Serializer": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "ae2c883b977c3198cae8d8a78359e70224c4c51d29ea34e02cca702e10a30821"
+    },
+    "oRPC OpenAPI Reference Plugin": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "6dfef9cb3f1400f3df5fd73ef4d24c169275976c406f68281622aedbcc140909"
+    },
+    "oRPC OpenAPI Routing": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "e0abd9556c8fa9316e7384496c97c4f11d182e69f18be908a03d607361562f5b"
+    },
+    "oRPC OpenAPI Specification": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "321eb406120a940da221a9be043f0ff5f912eaf6abe0fee25f34b3ec239af5be"
+    },
+    "oRPC OpenAPI to Contract": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "9bfed111a4d7371d025a6ea25c5a08713885bf78cd62ad38d69498a7b53d1eed"
+    },
+    "oRPC OpenAPILink": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "88cab74da865c822a791a062475787af0d91b22bc0538c66d9731e7a128a68a3"
+    },
+    "oRPC OpenTelemetry Integration": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "ce72d54fc24ef3b407bbcf5a2430568cb1501a8d374f6a056ad2319795335986"
+    },
+    "oRPC Optimize SSR": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "fb6024081682b070a8106a07fcad4809a939db9cc4b1f631726b18c2a668e4e5"
+    },
+    "oRPC Pinia Colada Integration": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "9394812fea46f9aa7f9b2449e314b3fc84519c7e98cd5729e5e5d1bb8ab90191"
+    },
+    "oRPC Pino Integration": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "2eef63b9aa5adde2278a199deee07f84e8aa1f13eecae2d3821225999c799ab4"
+    },
+    "oRPC Playgrounds": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "6ed647814978031bbc7da45f799b894d6bd0c3f50595366c593639b3cc48a493"
+    },
+    "oRPC Procedure": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "bd9222cdddb5147c46e34993fdbca80530ab6daadf416e3bdc25dc8980a435b1"
+    },
+    "oRPC Publish Client to NPM": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "f6da4260bfaf39cd7983545b246e97286dfc671a27563449bf49c8f7e325847a"
+    },
+    "oRPC Publisher": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "8e4b7b54eb170ebd169c71e63ddcaed7e01631dec8dc7e3ebd510d9dc54f24c0"
+    },
+    "oRPC RPC Handler": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "5a2efe1b5fcdb38e817277402d6293b5f051882c89ed49fd8088f64caacfcc56"
+    },
+    "oRPC RPC JSON Serializer": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "7d51dce09121406713ea2a5ee0be5c3092a1a6deed7bf500b0d1c91ae3cba396"
+    },
+    "oRPC RPC Protocol": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "e4ed4809981f14e5fca76998c01f216f36fd88d287a3521095140ce6bc3d2a24"
+    },
+    "oRPC RPCLink": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "6db738f4c2ac03ab31b64ff63fd56752a6bdc09b790e836206880faf260c9f90"
+    },
+    "oRPC Rate Limit": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "f460551ae1182046789a89734463aeb13ae9fc4a256e8745d169d9748ea61cd7"
+    },
+    "oRPC React Native Adapter": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "fc4803473e615575121064b4e11d4e89899ebb6a8ae30046c9a000c354e4b519"
+    },
+    "oRPC React SWR Integration": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "64f58c506c06d7611425349ff7221f405b52458f8eeab4e04057faad1e04d514"
+    },
+    "oRPC Redirect Response": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "ecbbfc57c822c5537b6e92ccbe54ab3f19147b705ae3d974ac6358bcf84c733a"
+    },
+    "oRPC Remix Adapter": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "547fdec5a4dae804468a74e8378d2213c9ef90b9b92b2b6654f90ac37eb22ad4"
+    },
+    "oRPC Request Headers Plugin": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "6a196e2421db50367d35792d104aa8f6e8e8f6abf4aa3a9c6090cafc97885180"
+    },
+    "oRPC Request Validation Plugin": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "eaf6b36ba563b5afbef19a242e23ca65ae7548d5cfd4ae7d544d52759a51e909"
+    },
+    "oRPC Response Headers Plugin": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "ef29906d1c4d8d35fba84c17505aa51ba4295e702e33bd8c99baa18f72865b88"
+    },
+    "oRPC Response Validation Plugin": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "530269adaeea5167530d92ec0e9c6dedcb1804689373e74d703282be2d306cee"
+    },
+    "oRPC Rethrow Handler Plugin": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "460286ddbc4cc5fdf8376c93048f7c5fcc7b8c49498eb497b87fd083550ccc67"
+    },
+    "oRPC Retry After Plugin": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "915f67ad4b1143102fb50b6edb07ac994e5f0f08ec0b330bfd71bec6557798dc"
+    },
+    "oRPC Router": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "92365b4abe373afa9a2c6a8b10688c73d943e7224a43cc87dd3fd5b058db6d20"
+    },
+    "oRPC Router to Contract": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "2f3d3cab65a9f902c770ddac9d59fefd138202314829761861c48ad5cff551c4"
+    },
+    "oRPC Scalar (Swagger)": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "5a2e50659c0121a8b557fa80cf9b0a2601c8a534fdb45290f8c5de9873cc9167"
+    },
+    "oRPC Sentry Integration": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "0fa02396ca8cf151cd595494d0c5838e0b7caf49fdd2b70b19c1e3595ea4e1bf"
+    },
+    "oRPC Server Action": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "ead15fc4b470331a0dc838a093204c1dec428f43c93dc85b68cb689a210c2153"
+    },
+    "oRPC Server-Side Clients": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "a0bc476d8ce8bb3eae59c8742d951932c48cade5bdd980b9ea1d8c03ac19658f"
+    },
+    "oRPC Signing Helpers": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "cdbeadf1a41cf0c201d9cfac9c3df55e5c29792c4cc95fbd5030d49c5b56ca02"
+    },
+    "oRPC Simple CSRF Protection Plugin": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "abe05b0332bd8b03a1018e59d0d6e7d37d07cc4edad1896cf0b4767f57e4c699"
+    },
+    "oRPC Smart Coercion Plugin": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "6736b5b44d08db2262c29d3209de6af95ed4d294674025aad54cc60772a591fc"
+    },
+    "oRPC Solid Start Adapter": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "cccffd8ff1b117aa8f23d7e22f7ac42522c083453602f896df6eb5dc16ffad50"
+    },
+    "oRPC Strict GET Method Plugin": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "226e23e9c8d6ef394655dbbe9eaa7e84862f6e469df127fdf7bdaae1616a607c"
+    },
+    "oRPC SuperJson": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "198939ae4efa1e1c5c929e461dc5766b8a3b601ecfe7e8f79f673f8f09c92e81"
+    },
+    "oRPC Svelte Kit Adapter": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "201e042cd9159e98370bf31303fca234f7566dfeaef85fc1b688e52f9335625d"
+    },
+    "oRPC TanStack Query Basic": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "9e6cbf3b1c391eabb0347e377241b16a15a0c1b0dc5edc8ff1a436f8cb61d9c7"
+    },
+    "oRPC TanStack Query Integration": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "acaa04233b8a9fc09b81a75dac127f48f3a74bef4772e52cc3f0a3d95b99488a"
+    },
+    "oRPC TanStack Start Adapter": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "a1b1cb84414757665ff2b5fc8179ecd27a074e596c21511fd20a9334f1852fb8"
+    },
+    "oRPC Testing & Mocking": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "32c45161fd3e0b550071bf490aec90339a0123306e41e0c06c1b80f0f54a3190"
+    },
+    "oRPC Validation Errors": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "3c7d350ae87927e04ec4f19fb26011e27d85e7ac110e8f252e5309cbae80e230"
+    },
+    "oRPC Web Workers Adapter": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "c1c7d52fa12d0dc047bf48da7a9193a9d22a4d7695cec2c7f05797b6f2c4cbcc"
+    },
+    "oRPC WebSocket Adapter": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "4b9ed58db2aeb1f988c460a38507ec5b6558632071b75101d7fe7c2ffe6f1145"
+    },
+    "oRPC Worker Threads Adapter": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "4e15253948af089ceeb0f7d3f20dbd99e25fe12e260957fff287e1bd3df31d43"
+    },
+    "oRPC Zod Smart Coercion": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "00ba268a4417e521425ba30e2b13e4755f1137d78106ba09dc3c02ac7126942b"
+    },
+    "oRPC tRPC Integration": {
+      "source": "ali-master/skills",
+      "sourceType": "github",
+      "computedHash": "b15b0ab23946ac33a781d26fee7bf7bcb5c84bca9f185794c32609e448f513f9"
     },
     "organization-best-practices": {
       "source": "better-auth/skills",
