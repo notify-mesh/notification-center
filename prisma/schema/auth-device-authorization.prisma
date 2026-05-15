@@ -1,0 +1,42 @@
+// =============================================================================
+// DeviceCode — Better Auth deviceAuthorization plugin
+// OAuth 2.0 Device Authorization Grant: a device shows a short userCode,
+// the user approves on another device; the original device polls with deviceCode.
+// Configured length: deviceCodeLength=48, userCodeLength=6, expiresIn=10m, interval=5s.
+// =============================================================================
+
+model DeviceCode {
+  id            String              @id @default(cuid(2))
+  deviceCode    String              @unique
+  userCode      String              @unique          // human-typed, e.g. "ABCDEF"
+
+  status        DeviceCodeStatus    @default(PENDING)
+  scope         String?
+  clientId      String?
+
+  userId        String?             // populated when user approves
+  user          User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  expiresAt     DateTime
+  lastPolledAt  DateTime?
+  approvedAt    DateTime?
+  rejectedAt    DateTime?
+
+  // Network context for audit
+  ipAddress     String?
+  userAgent     String?             @db.Text
+
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([userCode])
+  @@index([status, expiresAt])
+  @@map("device_codes")
+}
+
+enum DeviceCodeStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}

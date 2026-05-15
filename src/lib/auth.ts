@@ -15,8 +15,8 @@ import {
   multiSession,
 } from "better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
-import { redisClient } from "@root/lib/redis";
-import { prismaDbClient } from "@root/lib/prisma";
+import { redisClient } from "../lib/redis";
+import { prismaDbClient } from "../lib/prisma";
 
 export const auth = betterAuth({
   advanced: {
@@ -26,12 +26,21 @@ export const auth = betterAuth({
     ipAddress: {
       ipAddressHeaders: [
         "cf-connecting-ip",
+        "cf-connecting-ipv6",
+        "ar-real-ip",
+        "fly-client-ip",
+        "x-vercel-forwarded-for",
         "x-forwarded-for",
-        "x-real-ip",
-        "true-client-ip",
-        "fastly-client-ip",
         "x-client-ip",
+        "do-connecting-ip",
+        "fastly-client-ip",
+        "true-client-ip",
+        "x-real-ip",
         "x-cluster-client-ip",
+        "x-forwarded",
+        "forwarded-for",
+        "forwarded",
+        "x-appengine-user-ip",
       ],
     },
   },
@@ -135,7 +144,7 @@ export const auth = betterAuth({
         length: 6,
         storeBackupCodes: "encrypted",
       },
-      issuer: "Mind Source",
+      issuer: "Notification Center",
       totpOptions: {
         backupCodes: {
           storeBackupCodes: "encrypted",
@@ -159,9 +168,9 @@ export const auth = betterAuth({
       impersonationSessionDuration: 60 * 60, // 1 hour
     }),
     passkey({
-      rpID: "dashboard.local",
-      rpName: "Mind Source",
-      origin: "https://dashboard.local",
+      rpID: "notification-center.local",
+      rpName: "Notification Center",
+      origin: "https://notification-center.local",
       advanced: {
         webAuthnChallengeCookie: process.env.SESSION_SECRET,
       },
@@ -169,8 +178,8 @@ export const auth = betterAuth({
     jwt({
       disableSettingJwtHeader: false,
       jwt: {
-        issuer: "Mind Source",
-        audience: "https://gateway.local",
+        issuer: "Notification Center",
+        audience: "https://notification-center.local",
         expirationTime: "1h",
         getSubject: ({ user }) => {
           return user.id;
@@ -195,10 +204,10 @@ export const auth = betterAuth({
       },
       signUpOnVerification: {
         getTempName: (phoneNumber) => {
-          return `Mind Source User ${phoneNumber}`;
+          return `User ${phoneNumber}`;
         },
         getTempEmail: (phoneNumber) => {
-          return `mind-source-user-${phoneNumber}@example.com`;
+          return `notification-center-user-${phoneNumber}@useStrict.dev`;
         },
       },
       sendOTP: ({ phoneNumber, code }) => {

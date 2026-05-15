@@ -1,0 +1,28 @@
+// =============================================================================
+// TwoFactor — Better Auth twoFactor plugin
+// Stores the TOTP secret (encrypted at rest, base32 after decrypt) and a JSON
+// array of backup codes. The plugin's `storeBackupCodes: "encrypted"` setting
+// (see src/lib/auth.ts) means the `backupCodes` value here is ciphertext.
+// =============================================================================
+
+model TwoFactor {
+  id     String @id @default(cuid(2))
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Encrypted TOTP secret (AES-256-GCM via src/lib/crypto/aead.ts)
+  secret String @db.Text
+
+  // Encrypted JSON array of backup codes (one-time)
+  backupCodes String @db.Text
+
+  // Display in admin panel
+  issuer String? @default("Notification Center")
+  label  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("two_factors")
+}

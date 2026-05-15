@@ -1,0 +1,224 @@
+// =============================================================================
+// Templates — versioned, restorable, ACL'd
+// Template            — header: name, schema, archived flag
+// TemplateVariant     — content per (channel, locale) with monotonic versions
+// TemplateVersion     — immutable snapshot of (template + all variants) on
+//                       every publish/update; powers one-click restore
+// TemplateAuditLog    — fine-grained who-did-what trail with before/after JSON
+// TemplateAcl         — optional per-template grants on top of the role system
+// =============================================================================
+
+model Template {
+  id              String              @id @default(cuid(2))
+  projectId       String
+  project         Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  // Stable identifier used at send-time (e.g. "login-otp", "order-shipped")
+  name            String
+  displayName     String
+  description     String?
+  category        String?             // "transactional" | "marketing" | "system" | custom
+
+  // JSON Schema describing the variable shape; validated at send-time
+  variableSchema  Json
+
+  // Lifecycle
+  archived        Boolean             @default(false)
+  archivedAt      DateTime?
+  archivedById    String?
+
+  createdById     String
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  variants        TemplateVariant[]
+  versions        TemplateVersion[]
+  auditLogs       TemplateAuditLog[]
+  acl             TemplateAcl[]
+
+  @@unique([projectId, name])
+  @@index([projectId])
+  @@index([archived])
+  @@map("templates")
+}
+
+// One TemplateVariant per (channel, locale, version). Editing a published
+// variant creates a new draft version; publishing it atomically demotes the
+// previous published row.
+model TemplateVariant {
+  id              String           @id @default(cuid(2))
+  templateId      String
+  template        Template         @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  channel         String           // sms | email | bale | push | webhook
+  locale          String           // BCP-47, e.g. "fa-IR", "en-US"
+  version         Int              // monotonic per (template, channel, locale)
+  status          TemplateStatus   @default(DRAFT)
+
+  // Email
+  subject         String?
+  html            String?          @db.LongText
+  fromName        String?
+  fromEmail       String?
+  replyTo         String?
+
+  // SMS / Bale text channels
+  text            String?          @db.Text
+  smsType         String?          // "transactional" | "promotional" | "otp_pattern"
+  smsPatternName  String?          // Kavenegar pattern name (VerifyLookup)
+
+  // Push
+  pushTitle       String?
+  pushBody        String?
+  pushIcon        String?
+  pushData        Json?
+
+  // Webhook-as-channel
+  webhookPayload  Json?
+
+  // Render hints
+  isRtl           Boolean          @default(true)
+
+  // Authorship
+  createdById     String
+  publishedById   String?
+  publishedAt     DateTime?
+  archivedAt     DateTime?
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([templateId, channel, locale, version])
+  @@index([templateId, channel, locale, status])
+  @@index([status])
+  @@map("template_variants")
+}
+
+enum TemplateStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// Immutable snapshot for restoration. Every CREATE / UPDATE / PUBLISH /
+// ARCHIVE / RESTORE on a template captures the full (template + variants)
+// JSON here so you can rewind to any prior state.
+model TemplateVersion {
+  id              String              @id @default(cuid(2))
+  templateId      String
+  template        Template            @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  version         Int                 // monotonic per template
+
+  // Full snapshot — { template: {...}, variants: [...] }
+  snapshot        Json
+
+  changeKind      TemplateChangeKind
+  changeSummary   String?
+
+  createdById     String
+
+  createdAt       DateTime            @default(now())
+
+  @@unique([templateId, version])
+  @@index([templateId, createdAt])
+  @@map("template_versions")
+}
+
+enum TemplateChangeKind {
+  CREATE
+  UPDATE
+  PUBLISH
+  ARCHIVE
+  RESTORE
+  ACL_CHANGE
+}
+
+// Fine-grained audit. Each row records the actor, action, and a before/after
+// JSON. Restoration is performed by re-applying TemplateVersion.snapshot.
+model TemplateAuditLog {
+  id              String              @id @default(cuid(2))
+  templateId      String
+  template        Template            @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  // Optional pointer to the snapshot taken at this audit moment
+  templateVersionId String?
+
+  actorUserId     String
+  action          TemplateAuditAction
+
+  // Variant scope (if action targets one variant)
+  variantId       String?
+  channel         String?
+  locale          String?
+
+  // Diff for incremental edits
+  before          Json?
+  after           Json?
+
+  // Context
+  ipAddress       String?
+  userAgent       String?             @db.Text
+  reason          String?
+
+  createdAt       DateTime            @default(now())
+
+  @@index([templateId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+  @@map("template_audit_logs")
+}
+
+enum TemplateAuditAction {
+  CREATE
+  UPDATE_METADATA
+  UPDATE_SCHEMA
+  CREATE_VARIANT
+  UPDATE_VARIANT
+  PUBLISH_VARIANT
+  ARCHIVE_VARIANT
+  ARCHIVE_TEMPLATE
+  UNARCHIVE_TEMPLATE
+  RESTORE_FROM_VERSION
+  DELETE
+  ACL_GRANT
+  ACL_REVOKE
+}
+
+// Per-template grants — narrower than the role-based ACL.
+// Either roleId or userId is set (not both). When set, this overrides the
+// catalog-level role grants for the named template.
+model TemplateAcl {
+  id              String              @id @default(cuid(2))
+  templateId      String
+  template        Template            @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  // Optional environment scope (e.g. allow editing only in development)
+  environmentId   String?
+
+  // Grantee — exactly one of these
+  roleId          String?
+  userId          String?
+
+  // Granular flags
+  canRead         Boolean             @default(true)
+  canEdit         Boolean             @default(false)
+  canPublish      Boolean             @default(false)
+  canDelete       Boolean             @default(false)
+  canSend         Boolean             @default(false)
+
+  // Optional conditions (CASL-style ABAC JSON)
+  conditions      Json?
+
+  grantedById     String?
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@unique([templateId, environmentId, roleId, userId])
+  @@index([templateId])
+  @@index([roleId])
+  @@index([userId])
+  @@map("template_acl")
+}

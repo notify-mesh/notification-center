@@ -1,0 +1,34 @@
+// =============================================================================
+// Account — Better Auth credential & external-identity provider links
+// One row per (provider, accountId, userId). For email/password sign-in,
+// providerId="credential" and `password` holds the hash.
+// =============================================================================
+
+model Account {
+  id                    String    @id @default(cuid(2))
+
+  accountId             String    // provider's user id (or email for "credential")
+  providerId            String    // "credential" | "google" | "github" | ...
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // External-provider OAuth tokens
+  accessToken           String?   @db.Text
+  refreshToken          String?   @db.Text
+  idToken               String?   @db.Text
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+
+  // Credential provider only — algorithm + hashed value
+  password              String?
+  passwordAlgorithm     String?   @default("scrypt")   // future-proof for argon2id swap
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@index([providerId])
+  @@map("accounts")
+}

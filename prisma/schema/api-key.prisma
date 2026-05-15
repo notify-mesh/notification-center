@@ -1,104 +1,136 @@
-// API Key model with comprehensive security and monitoring features
+// =============================================================================
+// ApiKey — credential issued per (project, environment) with rotation support.
+//
+// Storage rules:
+//   - The plaintext token is shown to the user EXACTLY ONCE on creation.
+//   - keyHash stores HMAC-SHA256(token, serverPepper). Lookups use keyHash.
+//   - keyPrefix stores the first 8 displayable chars for masked UI display
+//     (e.g. "nc_live_xxxxxxxx****abcd").
+//
+// One environment can hold many ApiKey rows (rotation, named purposes).
+// =============================================================================
+
 model ApiKey {
-  id         String    @id @default(cuid(2))
-  name       String
-  key        String    @unique
-  isActive   Boolean   @default(true)
-  expiresAt  DateTime?
-  lastUsedAt DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id                String              @id @default(cuid(2))
 
-  // Description and metadata
-  description String?
-  metadata    Json?   @default("{}")
-  tags        Json?   @default("[]") // Array of strings
+  name              String
+  description       String?
 
-  // Environment the API key is for (one-to-one relation)
-  environmentId String?             @unique
-  environment   ProjectEnvironment? @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  // ---- Secret material ----
+  keyHash           String              @unique
+  keyPrefix         String              // first 8 chars of the displayable token
 
-  // Basic Permissions
-  canRead  Boolean @default(true)
-  canWrite Boolean @default(false)
+  // ---- Lifecycle ----
+  isActive          Boolean             @default(true)
+  expiresAt         DateTime?
+  lastUsedAt        DateTime?
 
-  // Scopes - what resources the key can access
-  scopes Json? @default("[]") // Array of scope strings
+  // Rotation: deprecatedAt is set when a successor key is issued; the
+  // original is kept alive for `gracePeriodHours` before auto-revoke.
+  deprecatedAt      DateTime?
+  revokedAt         DateTime?
+  revokedReason     String?
+  revokedByUserId   String?
 
-  // IP and Country Access Restrictions
-  ipRestrictions      Json?   @default("[]") // Array of IP addresses or CIDR ranges
-  countryRestrictions Json?   @default("[]") // Array of country codes (ISO 3166-1 alpha-2)
-  restrictionMode     String? @default("allow") // "allow" or "deny"
+  rotatedFromKeyId  String?
+  rotatedFromKey    ApiKey?             @relation("ApiKeyRotation", fields: [rotatedFromKeyId], references: [id], onDelete: SetNull)
+  rotatedTo         ApiKey[]            @relation("ApiKeyRotation")
 
-  // Quota Management (multiple time periods)
-  minuteQuota  Int? // Requests per minute
-  hourQuota    Int? // Requests per hour
-  dailyQuota   Int? // Requests per day
-  monthlyQuota Int? // Requests per month
+  // ---- Ownership ----
+  organizationId    String              // denormalized for cross-org analytics
+  projectId         String
+  project           Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  environmentId     String
+  environment       ProjectEnvironment  @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  userId            String              // creator / responsible user
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Current usage counters (these reset based on time periods)
-  currentMinuteUsage  Int      @default(0)
-  currentHourUsage    Int      @default(0)
-  currentDailyUsage   Int      @default(0)
-  currentMonthlyUsage Int      @default(0)
-  lastQuotaResetAt    DateTime @default(now())
+  // ---- Metadata + tags ----
+  metadata          Json?               @default("{}")
+  tags              Json?               @default("[]")
 
-  // Origin and Website Restrictions
-  originRestrictions Json? @default("[]") // Array of OriginRestriction objects
-  websiteOrigins     Json? @default("[]") // Array of allowed origins/domains
+  // ---- Permission gates ----
+  canRead           Boolean             @default(true)
+  canWrite          Boolean             @default(false)
 
-  // Security and Rate Limiting
-  rateLimitPerSecond Int?    @default(10) // Rate limit per second
-  allowedUserAgents  Json?   @default("[]") // Array of allowed user agent patterns
-  blockedUserAgents  Json?   @default("[]") // Array of blocked user agent patterns
-  requireHttps       Boolean @default(false) // Require HTTPS for all requests
-  allowedMethods     Json?   @default("[\"GET\", \"POST\"]") // Array of allowed HTTP methods
+  // CASL-friendly scope list (free-form strings, e.g. "sms.send", "templates.read")
+  scopes            Json?               @default("[]")
 
-  // Analytics and Monitoring
-  enableAnalytics Boolean @default(true)
-  alertThresholds Json?   @default("{}") // AlertThreshold object
-  webhookUrl      String? // Webhook URL for notifications
-  webhookEvents   Json?   @default("[]") // Array of events that trigger webhooks
+  // ---- Network restrictions ----
+  ipRestrictions      Json?             @default("[]") // IP/CIDR list
+  countryRestrictions Json?             @default("[]") // ISO-3166-1 alpha-2
+  restrictionMode     String?           @default("allow") // "allow" | "deny"
+  originRestrictions  Json?             @default("[]") // structured: [{ origin, methods, paths }]
+  websiteOrigins      Json?             @default("[]") // allowed Origin headers
+  allowedUserAgents   Json?             @default("[]")
+  blockedUserAgents   Json?             @default("[]")
+  allowedMethods      Json?             @default("[\"GET\",\"POST\"]")
+  requireHttps        Boolean           @default(false)
 
-  // Usage statistics
-  totalCalls        Int       @default(0)
-  successfulCalls   Int       @default(0)
-  failedCalls       Int       @default(0)
+  // ---- Quotas (windowed) ----
+  minuteQuota       Int?
+  hourQuota         Int?
+  dailyQuota        Int?
+  monthlyQuota      Int?
+
+  // ---- Per-second rate limit (token bucket) ----
+  rateLimitPerSecond Int?               @default(10)
+
+  // ---- Current windowed usage counters (reconciled from Redis every 15s) ----
+  currentMinuteUsage  Int               @default(0)
+  currentHourUsage    Int               @default(0)
+  currentDailyUsage   Int               @default(0)
+  currentMonthlyUsage Int               @default(0)
+  lastQuotaResetAt    DateTime          @default(now())
+
+  // ---- Observability / alerting ----
+  enableAnalytics   Boolean             @default(true)
+  alertThresholds   Json?               @default("{}") // { minuteUsagePct: 80, dailyUsagePct: 90 }
+  webhookUrl        String?
+  webhookEvents     Json?               @default("[]")
+
+  // ---- Lifetime metrics ----
+  totalCalls        Int                 @default(0)
+  successfulCalls   Int                 @default(0)
+  failedCalls       Int                 @default(0)
   lastFailedAt      DateTime?
   lastFailureReason String?
 
-  // Performance metrics
-  avgResponseTimeMs Int @default(0)
-  p95ResponseTimeMs Int @default(0)
-  p99ResponseTimeMs Int @default(0)
+  // Latency (rolling)
+  avgResponseTimeMs Int                 @default(0)
+  p95ResponseTimeMs Int                 @default(0)
+  p99ResponseTimeMs Int                 @default(0)
 
-  // Security metrics
-  securityViolations    Int       @default(0)
+  // Security counters
+  securityViolations    Int             @default(0)
   lastSecurityViolation DateTime?
 
-  // Relations
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
-  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 
-  // notifications relations
-  //  notification     Notifications[]
+  // ---- Relations ----
+  notificationJobs  NotificationJob[]
+  notifications     Notification[]
 
-  @@unique([projectId, environmentId])
+  @@index([keyHash])
+  @@index([keyPrefix])
+  @@index([environmentId])
   @@index([projectId])
-  @@index([key])
+  @@index([organizationId])
   @@index([userId])
   @@index([isActive])
   @@index([expiresAt])
+  @@index([deprecatedAt])
+  @@index([revokedAt])
   @@map("api_keys")
 }
 
-// Rate limiting tracking (for Redis-like functionality in database)
+// Persistent rate-limit windows (Redis is source-of-truth in flight; this
+// table backs the analytics charts and survives a Redis flush).
 model ApiKeyRateLimit {
   id        String   @id @default(cuid(2))
   apiKeyId  String
-  windowKey String // Format: "apikey_id:timestamp_window"
+  windowKey String   // "{apiKeyId}:{windowType}:{epochBucket}"
   count     Int      @default(1)
   expiresAt DateTime
   createdAt DateTime @default(now())
@@ -108,18 +140,20 @@ model ApiKeyRateLimit {
   @@map("api_key_rate_limits")
 }
 
-// API Key usage quotas with time-based windows
+// Per-window usage history (minute/hour/day/month). Powers analytics charts.
 model ApiKeyQuotaWindow {
-  id          String   @id @default(cuid(2))
-  apiKeyId    String
-  windowType  String // minute, hour, day, month
-  windowStart DateTime
-  windowEnd   DateTime
-  usageCount  Int      @default(0)
-  quotaLimit  Int?
-  isExceeded  Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(cuid(2))
+  apiKeyId     String
+  windowType   String   // "minute" | "hour" | "day" | "month"
+  windowStart  DateTime
+  windowEnd    DateTime
+  usageCount   Int      @default(0)
+  successCount Int      @default(0)
+  failureCount Int      @default(0)
+  quotaLimit   Int?
+  isExceeded   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@unique([apiKeyId, windowType, windowStart])
   @@index([windowEnd])
@@ -127,26 +161,23 @@ model ApiKeyQuotaWindow {
   @@map("api_key_quota_windows")
 }
 
-// Geographic usage statistics
+// Daily geographic rollup (feeds Feature 13's geo heatmap).
 model ApiKeyGeoStats {
-  id       String   @id @default(cuid(2))
-  apiKeyId String
-  date     DateTime
-  country  String
-  region   String?
-  city     String?
+  id              String   @id @default(cuid(2))
+  apiKeyId        String
+  date            DateTime
+  country         String
+  region          String?
+  city            String?
 
-  // Usage metrics
-  requestCount Int @default(0)
-  successCount Int @default(0)
-  errorCount   Int @default(0)
+  requestCount    Int      @default(0)
+  successCount    Int      @default(0)
+  errorCount      Int      @default(0)
 
-  // Performance metrics
-  avgResponseTime Int    @default(0)
-  totalBytes      BigInt @default(0)
+  avgResponseTime Int      @default(0)
+  totalBytes      BigInt   @default(0)
 
-  // Additional data
-  metadata Json? @default("{}")
+  metadata        Json?    @default("{}")
 
   @@unique([apiKeyId, date, country, region, city])
   @@index([date])

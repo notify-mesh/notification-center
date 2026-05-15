@@ -1,0 +1,69 @@
+// =============================================================================
+// AdminAuditLog — the catch-all audit table for state-changing operator actions
+// across the dashboard. Distinct from:
+//   - AuthAuditLog          (identity events: sign-in, 2FA, etc.)
+//   - AclAuditLog           (role/permission changes)
+//   - TemplateAuditLog      (template edits)
+//   - NotificationJobAuditLog (queue state changes)
+// Channel-specific notification logs live in their own per-feature schemas.
+//
+// `before` and `after` JSON enable diff-rendering in the admin Logs view and
+// (for many actions) one-click restore.
+// =============================================================================
+
+model AdminAuditLog {
+  id              String         @id @default(cuid(2))
+
+  // Actor — left as plain field (no FK) so audit rows survive user deletion
+  actorUserId     String
+  actorEmail      String?        // denormalized for read-only audit display
+
+  // Action namespace, e.g. "user.ban", "project.create", "apikey.rotate",
+  // "template.publish", "webhook.test", "credential.reveal".
+  action          String
+
+  // Target descriptor
+  targetType      String         // "user" | "project" | "environment" | "apikey" | "template" | "webhook" | "organization" | "role" | "permission" | "credential" | "device"
+  targetId        String
+  targetLabel     String?        // human-readable label captured at log time (e.g. project slug)
+
+  // Optional scope hints (denormalized for indexed filtering)
+  organizationId  String?
+  projectId       String?
+  environmentId   String?
+
+  // Diff payload (omit when irrelevant, e.g. simple reads)
+  before          Json?
+  after           Json?
+
+  // Context
+  ipAddress       String?
+  userAgent       String?        @db.Text
+  reason          String?
+
+  // Severity helps the dashboard surface CRITICAL events first
+  severity        AuditSeverity  @default(INFO)
+
+  // For freshness checks on destructive actions
+  freshSession    Boolean?       // whether the actor re-authenticated within 5 min
+
+  // Correlation id — ties together a multi-step operation across endpoints
+  correlationId   String?
+
+  createdAt       DateTime       @default(now())
+
+  @@index([actorUserId, createdAt])
+  @@index([targetType, targetId, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([projectId, createdAt])
+  @@index([action, createdAt])
+  @@index([severity, createdAt])
+  @@index([correlationId])
+  @@map("admin_audit_logs")
+}
+
+enum AuditSeverity {
+  INFO
+  WARN
+  CRITICAL
+}

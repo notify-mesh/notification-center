@@ -1,0 +1,225 @@
+// =============================================================================
+// NotificationJob — the queue's durable record
+// Mirrors BullMQ state in MariaDB so we can survive Redis flushes and serve
+// rich admin views (history, retries, audit, pause/resume/cancel).
+//
+//   NotificationJob              — one row per dispatched unit of work
+//   NotificationJobAttempt       — one row per retry attempt
+//   NotificationJobItem          — one row per recipient when kind=BULK
+//   NotificationJobAuditLog      — state-transition audit trail
+//
+// Status lifecycle:
+//   PENDING → IN_PROGRESS → (SENT | FAILED → RETRYING → IN_PROGRESS …)
+//   Terminal: SENT, FAILED, CANCELLED, PARTIAL.
+//   PAUSED is reachable from IN_PROGRESS, resumes to IN_PROGRESS.
+// =============================================================================
+
+model NotificationJob {
+  id                String                 @id @default(cuid(2))
+
+  // Ownership
+  projectId         String
+  project           Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  environmentId     String
+  environment       ProjectEnvironment     @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  organizationId    String
+  apiKeyId          String
+  apiKey            ApiKey                 @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  // Work kind
+  kind              NotificationJobKind    @default(SINGLE)
+
+  // Aggregates (meaningful for BULK; 1/0/0/0 for SINGLE)
+  total             Int                    @default(1)
+  succeeded         Int                    @default(0)
+  failed            Int                    @default(0)
+  skipped           Int                    @default(0)
+  inProgress        Int                    @default(0)
+
+  // Status lifecycle
+  status            NotificationJobStatus  @default(PENDING)
+
+  // Retry configuration
+  maxAttempts       Int                    @default(3)
+  attempts          Int                    @default(0)
+  nextRetryAt       DateTime?
+  backoffMs         Json?                  @default("[1000, 5000, 30000, 120000, 600000]")
+
+  // Scheduling
+  scheduledFor      DateTime?
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  cancelledAt       DateTime?
+  cancelledByUserId String?
+  pausedAt          DateTime?
+  pausedByUserId    String?
+  resumedAt         DateTime?
+
+  // Optional link back to the notification (SINGLE jobs)
+  notificationId    String?
+
+  // Payload (the request body without recipient list when BULK)
+  payload           Json
+
+  // Last error context (refreshed on each failed attempt)
+  lastError         String?                @db.Text
+  lastErrorCode     String?
+  lastFailedAt      DateTime?
+
+  // Idempotency
+  idempotencyKey    String?
+
+  // BullMQ correlation
+  queueName         String?
+  externalJobId     String?                // BullMQ job id
+  priority          Int                    @default(0)
+
+  // Free-form
+  metadata          Json?                  @default("{}")
+
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  // Relations
+  jobAttempts       NotificationJobAttempt[]
+  items             NotificationJobItem[]
+  auditLogs         NotificationJobAuditLog[]
+
+  @@unique([apiKeyId, idempotencyKey])
+  @@index([projectId, environmentId, status])
+  @@index([organizationId, status])
+  @@index([status, nextRetryAt])
+  @@index([status, scheduledFor])
+  @@index([externalJobId])
+  @@index([kind, status])
+  @@map("notification_jobs")
+}
+
+enum NotificationJobKind {
+  SINGLE
+  BULK
+  SCHEDULED
+}
+
+enum NotificationJobStatus {
+  PENDING
+  IN_PROGRESS
+  RETRYING
+  SENT
+  PARTIAL
+  FAILED
+  CANCELLED
+  PAUSED
+}
+
+// Per-attempt log. Every retry — including the first attempt — appends a row.
+model NotificationJobAttempt {
+  id                  String                       @id @default(cuid(2))
+  jobId               String
+  job                 NotificationJob              @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  attemptNumber       Int
+
+  status              NotificationJobAttemptStatus
+
+  startedAt           DateTime                     @default(now())
+  finishedAt          DateTime?
+  latencyMs           Int?
+
+  // Channel context (when SINGLE) — for BULK, look at per-item rows
+  channel             String?
+  providerName        String?
+  providerStatusCode  String?
+  providerMessageId   String?
+
+  // Error context
+  error               String?                      @db.Text
+  errorCode           String?
+
+  // Forensics
+  workerId            String?                      // which worker instance ran this
+  payloadHash         String?
+
+  createdAt           DateTime                     @default(now())
+
+  @@unique([jobId, attemptNumber])
+  @@index([jobId])
+  @@index([status, createdAt])
+  @@map("notification_job_attempts")
+}
+
+enum NotificationJobAttemptStatus {
+  IN_PROGRESS
+  SENT
+  FAILED
+  TIMEOUT
+  SKIPPED
+}
+
+// Per-row of a BULK job. rowKey is a hash that makes per-row idempotency safe
+// across retries of the parent job.
+model NotificationJobItem {
+  id              String                     @id @default(cuid(2))
+  jobId           String
+  job             NotificationJob            @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  rowIndex        Int
+  rowKey          String                     // sha256(jobIdempotencyKey || ":" || rowIndex || ":" || recipientHash)
+
+  // Recipient + variables
+  to              Json
+  variables       Json?
+
+  status          NotificationJobItemStatus  @default(PENDING)
+  attempts        Int                        @default(0)
+
+  // After dispatch
+  notificationId  String?
+
+  // Error context
+  reason          String?
+  errorCode       String?
+
+  startedAt       DateTime?
+  finishedAt      DateTime?
+
+  @@unique([jobId, rowKey])
+  @@index([jobId, status])
+  @@map("notification_job_items")
+}
+
+enum NotificationJobItemStatus {
+  PENDING
+  IN_PROGRESS
+  SENT
+  FAILED
+  SKIPPED
+}
+
+// State transitions for the queue audit view (who paused, who cancelled,
+// when did the system enqueue a retry).
+model NotificationJobAuditLog {
+  id              String           @id @default(cuid(2))
+  jobId           String
+  job             NotificationJob  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  // Null actorUserId = system action (e.g. retry scheduler)
+  actorUserId     String?
+
+  action          String           // "create" | "enqueue" | "start" | "succeed" | "fail" | "retry-scheduled" | "pause" | "resume" | "cancel" | "complete"
+  fromStatus      String?
+  toStatus        String?
+  reason          String?
+
+  ipAddress       String?
+  userAgent       String?          @db.Text
+
+  // Free-form context (e.g. retry delay, attempt number, BullMQ jobId)
+  metadata        Json?            @default("{}")
+
+  createdAt       DateTime         @default(now())
+
+  @@index([jobId, createdAt])
+  @@index([action, createdAt])
+  @@map("notification_job_audit_logs")
+}

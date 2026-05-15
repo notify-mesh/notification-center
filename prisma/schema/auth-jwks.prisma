@@ -1,0 +1,28 @@
+// =============================================================================
+// Jwks — Better Auth jwt plugin (JSON Web Key Set)
+// Keys used to sign issued JWTs (issuer="Notification Center", audience="https://gateway.local").
+// Multiple rows support rolling rotation: the latest active key signs,
+// older non-revoked keys remain readable for verification until expiry.
+// =============================================================================
+
+model Jwks {
+  id          String    @id @default(cuid(2))
+
+  // Key material
+  publicKey   String    @db.Text
+  privateKey  String    @db.Text       // encrypted at rest (AEAD)
+
+  // Algorithm (matches the jwt plugin config; EdDSA by default)
+  alg         String    @default("EdDSA")
+
+  // Rotation state
+  isActive    Boolean   @default(true)
+  rotatedAt   DateTime?
+  notBefore   DateTime  @default(now())
+  notAfter    DateTime?
+
+  createdAt   DateTime  @default(now())
+
+  @@index([isActive, notBefore])
+  @@map("jwks")
+}

@@ -1,0 +1,195 @@
+// =============================================================================
+// Database-driven CASL ACL — RBAC + ABAC
+// Mirrors CASL's rule shape: (action, subject, fields?, conditions?, inverted, reason).
+// Three tables compose into a CASL Ability at request time:
+//   AclRole              — a named bundle of permissions (per org or platform)
+//   AclPermission        — the (action, subject) universe
+//   AclRolePermission    — many-to-many with CASL extras (fields/conditions/inverted)
+//   AclUserRole          — assigns a role to a user in a scope (org / project / env)
+//
+// Conditions JSON supports MongoDB-style operators ($eq, $in, $regex, ...).
+// Variables like "${user.id}" or "${session.activeOrganizationId}" are resolved
+// at request time before being handed to CASL.
+//
+// Inheritance: AclRole.inheritsFromRoleId lets roles compose (e.g. "admin"
+// inherits "developer" which inherits "viewer"). The runtime flattens the chain.
+// =============================================================================
+
+model AclRole {
+  id                 String              @id @default(cuid(2))
+
+  // Scope: null = platform-wide; org-scoped roles live inside one organization.
+  organizationId     String?
+  organization       Organization?       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Identity
+  name               String              // canonical, e.g. "owner", "developer"
+  displayName        String
+  description        String?
+
+  // Lifecycle
+  isBuiltIn          Boolean             @default(false) // built-in roles cannot be edited/deleted
+  isActive           Boolean             @default(true)
+
+  // Inheritance — flattened at runtime
+  inheritsFromRoleId String?
+  inheritsFromRole   AclRole?            @relation("RoleInheritance", fields: [inheritsFromRoleId], references: [id], onDelete: SetNull)
+  inheritedBy        AclRole[]           @relation("RoleInheritance")
+
+  // Priority for tie-breaking (higher wins on conflicting rules)
+  priority           Int                 @default(0)
+
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  // ---- Relations ----
+  permissions        AclRolePermission[]
+  userRoles          AclUserRole[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@index([isActive])
+  @@map("acl_roles")
+}
+
+// Catalog of every (action, subject) the system understands.
+// "manage" + "all" form the wildcard. Custom subjects can be added per org
+// to support ABAC over customer-defined resources.
+model AclPermission {
+  id              String              @id @default(cuid(2))
+
+  // CASL canonical fields
+  action          String              // "manage" | "create" | "read" | "update" | "delete" | "send" | "rotate" | "revoke" | "reveal" | custom
+  subject         String              // "Project" | "ProjectEnvironment" | "ApiKey" | "Template" | "Notification" | "Webhook" | "Organization" | "User" | "all" | custom
+
+  // UI helpers
+  displayName     String
+  description     String?
+  category        String?             // grouping in UI: "Notifications" | "Identity" | "Billing" | "Organization"
+
+  isBuiltIn       Boolean             @default(true)
+
+  createdAt       DateTime            @default(now())
+
+  rolePermissions AclRolePermission[]
+
+  @@unique([action, subject])
+  @@index([subject])
+  @@index([category])
+  @@map("acl_permissions")
+}
+
+// The grant: a permission is granted to a role with optional CASL extras.
+model AclRolePermission {
+  id              String         @id @default(cuid(2))
+
+  roleId          String
+  role            AclRole        @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId    String
+  permission      AclPermission  @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  // CASL: restrict the rule to specific fields (e.g. only allow updating "name")
+  fields          Json?          // string[] | null
+
+  // CASL: ABAC conditions; supports Mongo-style operators.
+  // e.g. { "createdById": { "$eq": "${user.id}" } }
+  //      { "organizationId": { "$in": "${user.organizationIds}" } }
+  conditions      Json?
+
+  // CASL: inverted=true makes this a "cannot" rule. Higher priority than "can".
+  inverted        Boolean        @default(false)
+
+  // Surfaced when the rule denies an action
+  reason          String?
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@unique([roleId, permissionId, inverted])
+  @@index([permissionId])
+  @@map("acl_role_permissions")
+}
+
+// Assigns a role to a user inside a specific scope.
+// Multiple scopes per (user, role) allow time-bounded, multi-tenant grants.
+model AclUserRole {
+  id              String              @id @default(cuid(2))
+
+  userId          String
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId          String
+  role            AclRole             @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  // Scope — leave all null for platform-wide grants (combine with role.organizationId=null)
+  organizationId  String?
+  organization    Organization?       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId       String?
+  project         Project?            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  environmentId   String?
+  environment     ProjectEnvironment? @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+
+  // Time-bounded grants (e.g. temporary admin for an incident)
+  startsAt        DateTime?
+  endsAt          DateTime?
+
+  // Provenance
+  grantedById     String?
+  grantedReason   String?
+
+  createdAt       DateTime            @default(now())
+
+  @@unique([userId, roleId, organizationId, projectId, environmentId])
+  @@index([userId])
+  @@index([roleId])
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([environmentId])
+  @@index([endsAt])
+  @@map("acl_user_roles")
+}
+
+// Audit + restoration for the ACL configuration itself.
+// `before` and `after` snapshots make any change reversible.
+model AclAuditLog {
+  id            String          @id @default(cuid(2))
+
+  actorUserId   String
+
+  action        AclAuditAction
+  targetType    String          // "role" | "permission" | "role_permission" | "user_role"
+  targetId      String
+
+  // Optional pointer to a parent role for role_permission edits
+  parentRoleId  String?
+
+  // Snapshots
+  before        Json?
+  after         Json?
+
+  // Context
+  ipAddress     String?
+  userAgent     String?         @db.Text
+  reason        String?
+
+  createdAt     DateTime        @default(now())
+
+  @@index([actorUserId, createdAt])
+  @@index([targetType, targetId, createdAt])
+  @@map("acl_audit_logs")
+}
+
+enum AclAuditAction {
+  ROLE_CREATE
+  ROLE_UPDATE
+  ROLE_DELETE
+  ROLE_INHERIT
+  PERMISSION_CREATE
+  PERMISSION_UPDATE
+  PERMISSION_DELETE
+  ROLE_PERMISSION_GRANT
+  ROLE_PERMISSION_REVOKE
+  ROLE_PERMISSION_UPDATE_CONDITIONS
+  USER_ROLE_ASSIGN
+  USER_ROLE_UNASSIGN
+  USER_ROLE_UPDATE_SCOPE
+}

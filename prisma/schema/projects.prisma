@@ -1,40 +1,100 @@
-// Project model for different projects
+// =============================================================================
+// Project & ProjectEnvironment
+// Projects are owned by an Organization (or any sub-org). Each Project has
+// many environments (production, staging, development, ad-hoc). Environment
+// holds per-env defaults (channels, locale, sender, feature flags) and hard
+// caps (sends/day, sends/month) that override project-level limits.
+// =============================================================================
+
 model Project {
-  id          String   @id @default(cuid(2))
-  name        String
-  description String?
-  slug        String   @unique
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String               @id @default(cuid(2))
 
-  // Relations
-  environments ProjectEnvironment[]
-  members      ProjectMember[]
-  apiKeys      ApiKey[]
+  name              String
+  description       String?
+  slug              String               @unique
 
+  // ---- Ownership ----
+  organizationId    String
+  organization      Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdById       String
+
+  // ---- Lifecycle ----
+  isActive          Boolean              @default(true)
+  archivedAt        DateTime?
+
+  // ---- Per-project limits (override-able by org or environment) ----
+  maxEnvironments   Int                  @default(10)
+  maxApiKeysPerEnv  Int                  @default(10)
+  maxTemplates      Int                  @default(100)
+  maxWebhooks       Int                  @default(20)
+  maxSendsPerDay    Int?
+  maxSendsPerMonth  Int?
+
+  // ---- Settings (arbitrary JSON; see docs/11) ----
+  settings          Json?                @default("{}")
+
+  // ---- Compliance ----
+  dataRegion        String?              @default("ir-tehran")
+  retentionDays     Int                  @default(30) // hot retention for logs
+
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  // ---- Relations ----
+  environments      ProjectEnvironment[]
+  apiKeys           ApiKey[]
+  templates         Template[]
+  notifications     Notification[]
+  notificationJobs  NotificationJob[]
+  aclUserRoles      AclUserRole[]
+
+  @@index([organizationId])
+  @@index([archivedAt])
+  @@index([isActive])
   @@map("projects")
 }
 
-// Project environments (stage, production, etc.)
 model ProjectEnvironment {
-  id          String   @id @default(cuid(2))
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId   String
-  name        String // production, staging, development
-  description String?
-  isActive    Boolean  @default(true)
-  isDefault   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String       @id @default(cuid(2))
+  project           Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId         String
 
-  // Environment-specific settings
-  settings Json? @default("{}")
+  name              String       // "production" | "staging" | "development" | custom
+  description       String?
 
-  // Relations
-  apiKey ApiKey? // One-to-one relation with ApiKey
+  // ---- Lifecycle ----
+  isActive          Boolean      @default(true)
+  isDefault         Boolean      @default(false)
+  archivedAt        DateTime?
+
+  // ---- Environment-specific settings ----
+  // {
+  //   defaultChannels: ["bale","sms"],
+  //   defaultLocale:   "fa-IR",
+  //   defaults: { sms: { sender: "10004346", type: "transactional" }, email: { from: "..." } },
+  //   features: { enableBaleFallback: true, readOnly: false, deliveryReceipts: true }
+  // }
+  settings          Json?        @default("{}")
+
+  // ---- Hard caps (override project-level) ----
+  maxSendsPerDay    Int?
+  maxSendsPerMonth  Int?
+  maxApiKeys        Int?
+
+  // ---- Compliance overrides ----
+  retentionDays     Int?
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  // ---- Relations ----
+  apiKeys           ApiKey[]                       // one-to-many: rotation + multiple keys per env
+  notifications     Notification[]
+  notificationJobs  NotificationJob[]
+  aclUserRoles      AclUserRole[]
 
   @@unique([projectId, name])
   @@index([projectId])
+  @@index([isDefault])
   @@map("project_environments")
 }

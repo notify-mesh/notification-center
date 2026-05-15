@@ -1,0 +1,103 @@
+// =============================================================================
+// AuthAuditLog — every authentication & identity event
+// Distinct from AdminAuditLog (operator actions in the dashboard) and
+// the channel-specific notification logs. This table is the source of truth
+// for "who logged in, when, from where, how, did it succeed".
+// =============================================================================
+
+model AuthAuditLog {
+  id              String        @id @default(cuid(2))
+
+  // userId may be null when the attempt is for a non-existent identifier
+  userId          String?
+  user            User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  action          AuthAction
+  outcome         AuthOutcome
+  reason          String?
+
+  // Identifier used in the attempt (helps tracing failed lookups)
+  identifier      String?       // email / username / phone E.164
+  identifierKind  String?       // "email" | "username" | "phone"
+
+  // Method used
+  method          String?       // "credential" | "passkey" | "otp_sms" | "otp_email" | "totp" | "backup_code" | "magic_link"
+
+  // Session / device correlation
+  sessionId       String?
+  deviceId        String?
+
+  // Network + UA
+  ipAddress       String?
+  userAgent       String?       @db.Text
+
+  // Geolocation (resolved at log time)
+  country         String?
+  region          String?
+  city            String?
+
+  // Risk signals — fed by the rate-limiter, geo-anomaly, and device-trust modules
+  riskScore       Int?          // 0–100
+  riskFactors     Json?         // ["new_device", "tor_exit_node", "impossible_travel", ...]
+
+  // Free-form context (e.g. failed-2FA-code attempts left)
+  metadata        Json?         @default("{}")
+
+  createdAt       DateTime      @default(now())
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@index([identifier, createdAt])
+  @@index([ipAddress, createdAt])
+  @@index([outcome, action, createdAt])
+  @@map("auth_audit_logs")
+}
+
+enum AuthAction {
+  SIGN_IN
+  SIGN_OUT
+  SIGN_UP
+  PASSWORD_CHANGE
+  PASSWORD_RESET_REQUEST
+  PASSWORD_RESET_COMPLETE
+  EMAIL_VERIFY_REQUEST
+  EMAIL_VERIFY_COMPLETE
+  PHONE_VERIFY_REQUEST
+  PHONE_VERIFY_COMPLETE
+  TWO_FACTOR_ENABLE
+  TWO_FACTOR_DISABLE
+  TWO_FACTOR_CHALLENGE
+  TWO_FACTOR_VERIFY
+  BACKUP_CODE_USED
+  PASSKEY_REGISTER
+  PASSKEY_REMOVE
+  PASSKEY_AUTHENTICATE
+  SESSION_CREATE
+  SESSION_REFRESH
+  SESSION_REVOKE
+  SESSION_REVOKE_ALL
+  DEVICE_TRUST
+  DEVICE_UNTRUST
+  DEVICE_REVOKE
+  IMPERSONATION_START
+  IMPERSONATION_END
+  ACCOUNT_BAN
+  ACCOUNT_UNBAN
+  ACCOUNT_DELETE
+  ROLE_CHANGE
+  ORG_JOIN
+  ORG_LEAVE
+  ORG_INVITE_ACCEPT
+  ORG_INVITE_DECLINE
+  DEVICE_AUTH_REQUEST
+  DEVICE_AUTH_APPROVE
+  DEVICE_AUTH_REJECT
+  COMPROMISED_PASSWORD_DETECTED
+  RATE_LIMITED
+}
+
+enum AuthOutcome {
+  SUCCESS
+  FAILURE
+  BLOCKED
+}

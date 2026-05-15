@@ -77,7 +77,7 @@ proxy.ts       — Root-level middleware-style file; the auth gate for protected
 
 ### Authentication (Better Auth)
 
-`src/lib/auth.ts` configures a single `auth` export with a large plugin set: `haveIBeenPwned`, `multiSession`, `organization` (teams, dynamic access control, hooks), `lastLoginMethod`, `bearer`, `twoFactor`, `deviceAuthorization`, `admin`, `passkey` (`@better-auth/passkey`, RP `dashboard.local`), `jwt` (issuer "Mind Source", audience `https://gateway.local`), `phoneNumber`, `username`, `openAPI`.
+`src/lib/auth.ts` configures a single `auth` export with a large plugin set: `haveIBeenPwned`, `multiSession`, `organization` (teams, dynamic access control, hooks), `lastLoginMethod`, `bearer`, `twoFactor`, `deviceAuthorization`, `admin`, `passkey` (`@better-auth/passkey`, RP `dashboard.local`), `jwt` (issuer "Notification Center", audience `https://gateway.local`), `phoneNumber`, `username`, `openAPI`.
 
 Key wiring:
 - Prisma adapter with `provider: "mysql"` and transactions enabled.

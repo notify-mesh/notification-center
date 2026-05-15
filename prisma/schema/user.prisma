@@ -1,45 +1,85 @@
-// User and project member models
+// =============================================================================
+// User — Better Auth identity root
+// Carries fields demanded by every enabled plugin in src/lib/auth.ts:
+//   admin, username, phoneNumber, twoFactor, organization,
+//   lastLoginMethod, multiSession, passkey, deviceAuthorization, jwt,
+//   haveIBeenPwned, bearer, openAPI
+// Password lives in Account (provider="credential"), NOT here.
+// =============================================================================
 
 model User {
-  id        String   @id @default(cuid(2))
-  email     String   @unique
-  password  String
-  firstName String?
-  lastName  String?
-  isActive  Boolean  @default(true)
-  role      UserRole @default(USER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String      @id @default(cuid(2))
 
-  // Relations
-  projectMembers ProjectMember[]
-  apiKeys        ApiKey[]
+  // Core Better Auth fields
+  name                 String
+  email                String      @unique
+  emailVerified        Boolean     @default(false)
+  image                String?
 
+  // username plugin
+  username             String?     @unique
+  displayUsername      String?
+
+  // phoneNumber plugin
+  phoneNumber          String?     @unique
+  phoneNumberVerified  Boolean     @default(false)
+
+  // twoFactor plugin
+  twoFactorEnabled     Boolean     @default(false)
+
+  // admin plugin (platform-level role; org/project roles live in AclUserRole)
+  role                 String      @default("user")  // "user" | "admin" | custom
+  banned               Boolean     @default(false)
+  banReason            String?
+  banExpires           DateTime?
+
+  // lastLoginMethod plugin (storeInDatabase: true is configured)
+  lastLoginMethod      String?
+  lastLoginAt          DateTime?
+
+  // Locale and timezone preferences
+  locale               String?     @default("fa-IR")
+  timezone             String?     @default("Asia/Tehran")
+
+  // Session policy — enforced in app code on session create
+  sessionMode          SessionMode @default(MULTI)
+  maxSessions          Int         @default(3)
+
+  // Soft delete
+  isActive             Boolean     @default(true)
+  deletedAt            DateTime?
+
+  // Compromised-password badge (from haveIBeenPwned plugin signals + audit)
+  passwordCompromised  Boolean     @default(false)
+  passwordChangedAt    DateTime?
+
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+
+  // ---- Relations ----
+  accounts             Account[]
+  sessions             Session[]
+  devices              UserDevice[]
+  twoFactors           TwoFactor[]
+  passkeys             Passkey[]
+  deviceCodes          DeviceCode[]
+  authAuditLogs        AuthAuditLog[]
+  members              Member[]
+  invitations          Invitation[]  @relation("InviterInvitations")
+  teamMembers          TeamMember[]
+  aclUserRoles         AclUserRole[]
+  apiKeys              ApiKey[]
+
+  @@index([email])
+  @@index([username])
+  @@index([phoneNumber])
+  @@index([role])
+  @@index([banned])
+  @@index([isActive])
   @@map("users")
 }
 
-// Project members with roles
-model ProjectMember {
-  id        String     @id @default(cuid(2))
-  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId String
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
-  role      MemberRole @default(MEMBER)
-  joinedAt  DateTime   @default(now())
-
-  @@unique([projectId, userId])
-  @@map("project_members")
-}
-
-enum UserRole {
-  ADMIN
-  USER
-}
-
-enum MemberRole {
-  OWNER
-  ADMIN
-  MEMBER
-  VIEWER
+enum SessionMode {
+  SINGLE   // a new sign-in revokes any existing session
+  MULTI    // up to maxSessions concurrent sessions
 }

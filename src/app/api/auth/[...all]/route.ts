@@ -1,5 +1,5 @@
 import { toNodeHandler } from "better-auth/node";
-import { auth } from "@root/lib/auth";
+import { auth } from "src/lib/auth";
 
 // Disallow body parsing, we will parse it manually
 export const config = { api: { bodyParser: false } };

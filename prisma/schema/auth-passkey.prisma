@@ -1,0 +1,33 @@
+// =============================================================================
+// Passkey — Better Auth passkey plugin (WebAuthn / FIDO2)
+// One row per registered credential. A user can register many passkeys
+// (e.g. iCloud Keychain + a physical security key).
+// =============================================================================
+
+model Passkey {
+  id            String    @id @default(cuid(2))
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Human-friendly label (admin panel + user-facing list)
+  name          String?
+
+  // WebAuthn credential
+  credentialID  String    @unique          // base64url
+  publicKey     String    @db.Text         // base64url-encoded COSE key
+  counter       Int       @default(0)
+  deviceType    String                     // "singleDevice" | "multiDevice"
+  backedUp      Boolean   @default(false)
+  transports    String?                    // CSV: "usb,nfc,ble,internal,hybrid"
+  aaguid        String?                    // authenticator model id
+
+  // Trust + lifecycle
+  lastUsedAt    DateTime?
+  revokedAt     DateTime?
+
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
+  @@index([credentialID])
+  @@map("passkeys")
+}

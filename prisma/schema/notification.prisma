@@ -1,0 +1,180 @@
+// =============================================================================
+// Notification — the unified send record (one per "send request").
+// Channel-specific rows (sms_messages, email_messages, bale_messages,
+// push_messages) live in their own per-feature schemas and link back here
+// via NotificationAttempt.channelRecordId.
+//
+// NotificationEvent stores the timeline (queued → in_progress → sent →
+// delivered/opened/clicked/bounced/failed) for the admin "Drill-down" view.
+//
+// RecipientPreference captures end-user channel choices for the unified API.
+// =============================================================================
+
+model Notification {
+  id                  String                @id @default(cuid(2))
+
+  // Ownership
+  projectId           String
+  project             Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  environmentId       String
+  environment         ProjectEnvironment    @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  organizationId      String                // denormalized
+  apiKeyId            String
+  apiKey              ApiKey                @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  // Recipient
+  toPhone             String?
+  toEmail             String?
+  externalUserId      String?
+  toIdentifierHash    String?               // SHA-256(identifier || projectPepper) — for analytics aggregation
+
+  // Content
+  templateId          String?
+  templateName        String?               // denormalized for filtering
+  templateVersion     Int?
+  locale              String?
+  variables           Json?
+  inlineSubject       String?
+  inlineBody          String?               @db.Text  // when sent without a template
+
+  // Channel routing
+  channelsRequested   Json                  // ["bale","sms"]
+  channelUsed         String?
+
+  // Lifecycle
+  status              NotificationStatus    @default(QUEUED)
+  reason              String?
+
+  // Idempotency
+  idempotencyKey      String?
+
+  // Optional link to the queue job
+  jobId               String?
+
+  // Cost (IRR; for analytics)
+  costIrr             Int?
+
+  // Free-form metadata supplied by the caller
+  metadata            Json?                 @default("{}")
+
+  // Timestamps for funnel computation
+  queuedAt            DateTime              @default(now())
+  startedAt           DateTime?
+  sentAt              DateTime?
+  deliveredAt         DateTime?
+  failedAt            DateTime?
+  cancelledAt         DateTime?
+
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  // ---- Relations ----
+  attempts            NotificationAttempt[]
+  events              NotificationEvent[]
+
+  @@unique([apiKeyId, idempotencyKey])
+  @@index([projectId, environmentId, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([status, createdAt])
+  @@index([externalUserId])
+  @@index([toIdentifierHash])
+  @@index([templateName, createdAt])
+  @@map("notifications")
+}
+
+enum NotificationStatus {
+  QUEUED
+  IN_PROGRESS
+  SENT
+  PARTIAL          // some channels succeeded, others failed
+  FAILED
+  CANCELLED
+  RETRYING
+}
+
+// One per channel attempt. Fallback chains write multiple rows in attempt order.
+model NotificationAttempt {
+  id                String                       @id @default(cuid(2))
+  notificationId    String
+  notification      Notification                 @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  attempt           Int                          @default(1)
+  channel           String                       // sms | email | bale | push | webhook
+
+  // FK-style pointer (not a hard FK because the target table varies)
+  channelRecordId   String?                      // e.g. sms_messages.id
+
+  status            NotificationAttemptStatus
+  providerName      String?                      // "kavenegar" | "resend" | "smtp" | "bale" | "vapid"
+  providerStatus    String?                      // raw provider status text/code
+  reason            String?
+
+  startedAt         DateTime                     @default(now())
+  finishedAt        DateTime?
+  latencyMs         Int?
+
+  @@index([notificationId])
+  @@index([channel, status])
+  @@map("notification_attempts")
+}
+
+enum NotificationAttemptStatus {
+  SENT
+  DELIVERED
+  FAILED
+  SKIPPED
+  TIMEOUT
+}
+
+// Timeline of lifecycle events for the drill-down view.
+// Channel adapters and webhook ingestors append events here.
+model NotificationEvent {
+  id              String        @id @default(cuid(2))
+  notificationId  String
+  notification    Notification  @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  eventName       String        // "queued" | "in_progress" | "sent" | "delivered" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "retrying" | "cancelled" | "skipped"
+  channel         String?
+  providerName    String?
+
+  payload         Json?         // raw provider event for forensics
+
+  createdAt       DateTime      @default(now())
+
+  @@index([notificationId, createdAt])
+  @@index([eventName, createdAt])
+  @@map("notification_events")
+}
+
+// Recipient (end-user) channel preferences, scoped to a project.
+// The unified API consults this when no explicit `channels` is given.
+model RecipientPreference {
+  id              String       @id @default(cuid(2))
+  projectId       String
+  externalUserId  String
+
+  // Ordered channel list (first = most preferred)
+  channels        Json         // ["bale","sms","email"]
+
+  // Per-channel opt-outs (regulatory / legal)
+  smsOptOut       Boolean      @default(false)
+  emailOptOut     Boolean      @default(false)
+  pushOptOut      Boolean      @default(false)
+  baleOptOut      Boolean      @default(false)
+
+  // Quiet hours: { start: "22:00", end: "08:00", tz: "Asia/Tehran" }
+  quietHours      Json?
+
+  // Locale override
+  preferredLocale String?
+
+  // Free-form
+  metadata        Json?        @default("{}")
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@unique([projectId, externalUserId])
+  @@index([projectId])
+  @@map("recipient_preferences")
+}
