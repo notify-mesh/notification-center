@@ -1,7 +1,8 @@
 import Script from "next/script";
 import { Geist } from "next/font/google";
 import { cn } from "@root/lib/utils";
-import "@root/lib/orpc.server";
+import "@root/global.css";
+import "@root/lib/orpc/server-client";
 import type React from "react";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });

@@ -6,7 +6,6 @@ const nextConfig: NextConfig = {
     appNavFailHandling: true,
     appNewScrollHandler: true,
     authInterrupts: true,
-    cachedNavigations: true,
     clientRouterFilter: true,
     clientRouterFilterRedirects: true,
     gestureTransition: true,
@@ -15,7 +14,7 @@ const nextConfig: NextConfig = {
     useCache: true,
     typedEnv: true,
     varyParams: true,
-    serverSourceMaps: true
+    serverSourceMaps: true,
   },
   cleanDistDir: true,
   enablePrerenderSourceMaps: true,
