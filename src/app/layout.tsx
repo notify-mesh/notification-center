@@ -32,7 +32,7 @@ export default function RootLayout({
               keyHoldDuration: 150,
               allowActivationInsideInput: true,
               maxContextLines: 10,
-              activationKey: "Meta",
+              activationKey: "Meta+shift",
             })}
           />
         )}

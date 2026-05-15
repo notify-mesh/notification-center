@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrepareMain } from "./main";
 
 /**
- * Top-level "prepare" entry. Owns CLI flag parsing for the prepare side:
+ * Top-level "prepare" entry. Owns CLI flag parsing for the prepared side:
  *
  *   bun run db:seed                            # prepare everything
  *   bun run db:seed -- --prepare               # explicit
@@ -21,7 +21,7 @@ export async function PrepareDatabase(db: PrismaClient) {
   }
 
   // When the user asks for a specific pack (e.g. `--main`), only run that.
-  // Otherwise run every pack that hasn't been excluded.
+  // Otherwise, run every pack that hasn't been excluded.
   const onlyMain = args.includes("--main");
   if (onlyMain) {
     await PrepareMain(db);

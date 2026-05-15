@@ -165,7 +165,13 @@ model Team {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdAt      DateTime
   updatedAt      DateTime?    @updatedAt
-  teammembers    TeamMember[]
+
+  // ---- Custom business fields (preserved across `bun run auth:generate`) ----
+  description String? @db.Text
+  isActive    Boolean @default(true)
+
+  teammembers TeamMember[]
+  apiKeys     ApiKey[]
 
   @@index([organizationId(length: 191)])
   @@map("team")

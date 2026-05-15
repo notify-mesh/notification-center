@@ -4,16 +4,16 @@ import { SEED_ADMIN, SEED_IDS, SEED_ORG } from "../../constants";
 
 /**
  * `PrepareMain` is the heart of the bootstrap. It is fully idempotent —
- * every write is an `upsert` keyed on a deterministic ID from `SEED_IDS`,
+ * every writing is an `upsert` keyed on a deterministic ID from `SEED_IDS`,
  * so re-running the seed after a partial failure (or after iterating on
  * roles/permissions) converges to the same end state.
  *
  * Seeded data:
- *   1. Admin user + credentials Account (Better Auth `providerId = "credential"`)
+ *   1. Admin user and credentials Account (Better Auth `providerId = "credential"`)
  *   2. Default Organization + Team + owner Member row
  *   3. CASL ACL catalog (action/subject tuples)
  *   4. Built-in platform roles (owner/admin/developer/viewer) and grants
- *   5. Default Project + production/staging/development environments
+ *   5. Default Project and production/staging/development environments
  */
 export async function PrepareMain(db: PrismaClient) {
   console.log("· Seeding admin user…");
@@ -142,7 +142,7 @@ const PERMISSIONS: Array<{
 
 /**
  * Built-in roles — platform-wide (organizationId = null), `isBuiltIn = true`
- * so the admin UI can't accidentally delete them. The grants array is a
+ * so the admin UI can't accidentally delete them. The grant array is a
  * snapshot — re-runs wipe and re-link the role's permissions so this file
  * stays the single source of truth.
  */
@@ -339,8 +339,7 @@ async function seedAclCatalog(db: PrismaClient): Promise<void> {
   //
   // We can't use `upsert` here: the role table's @@unique([organizationId,
   // name]) lets `organizationId` be null, but Prisma rejects nulls inside a
-  // compound unique where-clause (SQL semantics — `NULL ≠ NULL`). So we hand-
-  // roll the upsert with findFirst + branch.
+  // compound unique where-clause (SQL semantics — `NULL ≠ NULL`). So we hand-roll the upsert with findFirst + branch.
   for (const role of BUILTIN_ROLES) {
     const existing = await db.aclRole.findFirst({
       where: { name: role.name, organizationId: null, isBuiltIn: true },

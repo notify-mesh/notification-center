@@ -24,6 +24,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Inspiration template — not part of the build.
+    "temp-shadcn-admin-template/**",
   ]),
 ]);
 
