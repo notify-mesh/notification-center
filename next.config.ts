@@ -1,3 +1,4 @@
+import million from "million/compiler";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -23,4 +24,10 @@ const nextConfig: NextConfig = {
   generateEtags: true,
 };
 
-export default nextConfig;
+const millionConfig = {
+  auto: { rsc: true },
+};
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-expect-error
+export default million.next(nextConfig, millionConfig);

@@ -47,6 +47,8 @@ model Project {
   notifications     Notification[]
   notificationJobs  NotificationJob[]
   aclUserRoles      AclUserRole[]
+  providerCredentials ProviderCredential[]
+  enabledChannels     EnabledChannel[]
 
   @@index([organizationId])
   @@index([archivedAt])
@@ -92,6 +94,8 @@ model ProjectEnvironment {
   notifications     Notification[]
   notificationJobs  NotificationJob[]
   aclUserRoles      AclUserRole[]
+  providerCredentials ProviderCredential[]
+  enabledChannels     EnabledChannel[]
 
   @@unique([projectId, name])
   @@index([projectId])

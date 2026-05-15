@@ -28,6 +28,7 @@ export const sidebarNavGroups: NavGroupProps[] = [
     items: [
       { title: "Organizations", url: "/organizations", icon: Building2 },
       { title: "Teams", url: "/teams", icon: Users },
+      { title: "Permissions", url: "/permissions", icon: ShieldCheck },
       { title: "Passkeys", url: "/passkeys", icon: Fingerprint },
       { title: "Devices", url: "/devices", icon: MonitorSmartphone },
     ],

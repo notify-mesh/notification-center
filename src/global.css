@@ -127,3 +127,7 @@
     @apply font-sans;
     }
 }
+
+.unicode-plaintext {
+    unicode-bidi: plaintext;
+}

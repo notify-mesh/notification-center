@@ -1,0 +1,52 @@
+// =============================================================================
+// EnabledChannel — which delivery channels are active for an environment,
+// plus the per-channel default config.
+//
+// Lookup at send time:
+//   1. notify.send({ apiKey, channel: "sms", ... })
+//   2. resolveActiveOrg(apiKey) → projectId + environmentId
+//   3. EnabledChannel where projectId+environmentId+channel matches
+//   4. providerKey → ProviderCredential row → decrypted creds → transport
+//
+// `priority` controls fallback ordering when the unified API needs to pick
+// (lower = preferred). `isActive` lets ops toggle a channel off without
+// deleting config.
+// =============================================================================
+
+model EnabledChannel {
+  id              String   @id @default(cuid(2))
+
+  // ---- Scope ----
+  organizationId  String       // denormalised for cross-org analytics
+  projectId       String
+  project         Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  environmentId   String
+  environment     ProjectEnvironment   @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+
+  // ---- Channel selection ----
+  // "sms" | "email" | "push" | "bale" | "telegram" | "slack" | "webhook"
+  channel         String
+  // Which provider implements this channel for this env. Must reference an
+  // existing `ProviderCredential.providerKey` within the same env.
+  providerKey     String
+
+  // ---- Behaviour ----
+  isActive        Boolean  @default(true)
+  // Lower number = preferred when the unified API fans out a fallback list.
+  priority        Int      @default(100)
+  // Per-channel default config (non-secret): sender, fromAddress, etc.
+  // Secrets stay in ProviderCredential.
+  config          Json     @default("{}")
+
+  // Hard caps (optional; otherwise inherit from project/env).
+  dailyCap        Int?
+  monthlyCap      Int?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([projectId, environmentId, channel])
+  @@index([organizationId])
+  @@index([providerKey])
+  @@map("enabled_channels")
+}

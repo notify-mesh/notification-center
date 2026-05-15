@@ -6,6 +6,7 @@ import { AppSidebar } from "@root/components/layout/app-sidebar";
 import { Header } from "@root/components/layout/header";
 import { HeaderActions } from "./_chrome/header-actions";
 import { QueryProvider } from "./_chrome/query-provider";
+import { CommandPaletteProvider } from "@root/components/layout/command-palette";
 import { Toaster } from "@root/components/ui/sonner";
 import type React from "react";
 
@@ -32,25 +33,27 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <QueryProvider>
-      <SidebarProvider defaultOpen={defaultOpen}>
-        <AppSidebar
-          user={user}
-          organizations={organizations.map((o) => ({
-            id: o.id,
-            name: o.name,
-            slug: o.slug,
-            plan: "Standard",
-          }))}
-          activeOrganizationId={activeOrganizationId}
-        />
-        <SidebarInset className="@container/content">
-          <Header fixed>
-            <HeaderActions email={session.user.email} />
-          </Header>
-          {children}
-        </SidebarInset>
-        <Toaster position="top-right" richColors />
-      </SidebarProvider>
+      <CommandPaletteProvider>
+        <SidebarProvider defaultOpen={defaultOpen}>
+          <AppSidebar
+            user={user}
+            organizations={organizations.map((o) => ({
+              id: o.id,
+              name: o.name,
+              slug: o.slug,
+              plan: "Standard",
+            }))}
+            activeOrganizationId={activeOrganizationId}
+          />
+          <SidebarInset className="@container/content">
+            <Header fixed>
+              <HeaderActions email={session.user.email} />
+            </Header>
+            {children}
+          </SidebarInset>
+          <Toaster position="top-right" richColors />
+        </SidebarProvider>
+      </CommandPaletteProvider>
     </QueryProvider>
   );
 }

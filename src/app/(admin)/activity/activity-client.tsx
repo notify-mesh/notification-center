@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import {
   Activity as ActivityIcon,
@@ -151,6 +152,10 @@ function severityVariant(s: string) {
 }
 
 export function ActivityClient() {
+  // `?userId=` from the URL narrows both feeds to a single user's events —
+  // used by the Permissions/Teams pages to drill into a member's history.
+  const searchParams = useSearchParams();
+  const userIdFromUrl = searchParams.get("userId") ?? undefined;
   const [tab, setTab] = React.useState<"auth" | "admin">("auth");
   const [outcome, setOutcome] = React.useState<string>(ANY_VALUE);
   const [severity, setSeverity] = React.useState<string>(ANY_VALUE);
@@ -158,6 +163,16 @@ export function ActivityClient() {
 
   return (
     <Tabs value={tab} onValueChange={(v) => setTab(v as "auth" | "admin")} className="gap-4">
+      {userIdFromUrl ? (
+        <div className="flex items-center justify-between gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-xs">
+          <span className="text-muted-foreground">
+            Filtered to user <code className="font-mono">{userIdFromUrl}</code>
+          </span>
+          <a href="/activity" className="font-medium underline-offset-2 hover:underline">
+            Clear
+          </a>
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <TabsList>
           <TabsTrigger value="auth">
@@ -204,6 +219,7 @@ export function ActivityClient() {
       <TabsContent value="auth" className="mt-0">
         <AuthFeed
           outcome={outcome === ANY_VALUE ? undefined : (outcome as (typeof OUTCOMES)[number])}
+          userId={userIdFromUrl}
           onSelect={setSelected}
         />
       </TabsContent>
@@ -233,16 +249,18 @@ export function ActivityClient() {
 
 function AuthFeed({
   outcome,
+  userId,
   onSelect,
 }: {
   outcome?: (typeof OUTCOMES)[number];
+  userId?: string;
   onSelect: (e: AuthEvent) => void;
 }) {
   const query = useInfiniteQuery({
-    queryKey: ["audit", "auth", outcome ?? "all"],
+    queryKey: ["audit", "auth", outcome ?? "all", userId ?? "self"],
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ pageParam }) =>
-      client.audit.listAuthEvents({ limit: PAGE_SIZE, cursor: pageParam, outcome }),
+      client.audit.listAuthEvents({ limit: PAGE_SIZE, cursor: pageParam, outcome, userId }),
     getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
 

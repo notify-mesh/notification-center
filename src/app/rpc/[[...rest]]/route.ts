@@ -1,6 +1,7 @@
 import { RPCHandler } from "@orpc/server/fetch";
 import { onError, ORPCError } from "@orpc/server";
 import {
+  BatchHandlerPlugin,
   CORSPlugin,
   ResponseHeadersPlugin,
   StrictGetMethodPlugin,
@@ -16,6 +17,10 @@ import { logger } from "@root/lib/logger";
  * The RPC handler exposes the router over oRPC's compact JSON wire format.
  *
  * Plugins (executed in declaration order):
+ *  - `BatchHandlerPlugin` — unwraps `POST .../__batch__` envelopes shipped
+ *    by the client's `BatchLinkPlugin`. Without this the server treats
+ *    `__batch__` as a literal procedure segment and 404s every coalesced
+ *    call (e.g. multiple `projects.get({id})` from a single render tick).
  *  - `CORSPlugin` — allows the admin SPA to talk to the API across origins.
  *  - `ResponseHeadersPlugin` — surfaces `context.resHeaders` to procedures.
  *  - `StrictGetMethodPlugin` — only procedures with `route.method === "GET"`
@@ -38,6 +43,7 @@ const handler = new RPCHandler<ORPCContext>(router, {
       logRequestResponse: true, // Log request start/end (disabled by default)
       logRequestAbort: true, // Log when requests are aborted (disabled by default)
     }),
+    new BatchHandlerPlugin(),
     new CORSPlugin({
       origin: (origin) => origin,
       allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"],

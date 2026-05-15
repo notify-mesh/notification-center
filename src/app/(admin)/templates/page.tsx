@@ -1,11 +1,15 @@
-import { ComingSoon } from "../_chrome/page-shell";
+import { Main } from "@root/components/layout/main";
+import { PageHeading } from "@root/components/layout/header";
+import { TemplatesClient } from "./templates-client";
 
 export default function TemplatesPage() {
   return (
-    <ComingSoon
-      title="Templates"
-      description="Reusable notification bodies with channel-aware variants."
-      note="Authoring UI is on the roadmap."
-    />
+    <Main className="flex flex-1 flex-col gap-6">
+      <PageHeading
+        title="Templates"
+        description="Versioned content with per-channel + per-locale variants. Drafts are sendable from non-production environments only."
+      />
+      <TemplatesClient />
+    </Main>
   );
 }

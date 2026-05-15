@@ -43,6 +43,8 @@ import {
   DropdownMenuTrigger,
 } from "@root/components/ui/dropdown-menu";
 import { Skeleton } from "@root/components/ui/skeleton";
+import { InviteDialog } from "@root/components/invitations/invite-dialog";
+import { InvitationsList } from "@root/components/invitations/invitations-list";
 
 interface Team {
   id: string;
@@ -93,10 +95,25 @@ export function TeamsClient() {
           {teams.length} team{teams.length === 1 ? "" : "s"} ·{" "}
           {teams.filter((t) => t.isActive).length} active
         </div>
-        <CreateTeamDialog
-          onCreated={() => queryClient.invalidateQueries({ queryKey: ["teams"] })}
-        />
+        <div className="flex items-center gap-2">
+          <InviteDialog
+            trigger={
+              <Button variant="outline">
+                <Plus />
+                Invite users
+              </Button>
+            }
+          />
+          <CreateTeamDialog
+            onCreated={() => queryClient.invalidateQueries({ queryKey: ["teams"] })}
+          />
+        </div>
       </div>
+
+      <section className="flex flex-col gap-2">
+        <h3 className="text-sm font-medium text-muted-foreground">Pending invitations</h3>
+        <InvitationsList />
+      </section>
 
       {error ? (
         <Card>

@@ -13,6 +13,8 @@ import {
 } from "@root/components/ui/card";
 import { Badge } from "@root/components/ui/badge";
 import { Button } from "@root/components/ui/button";
+import { InviteDialog } from "@root/components/invitations/invite-dialog";
+import { InvitationsList } from "@root/components/invitations/invitations-list";
 
 export default async function OrganizationsPage() {
   const requestHeaders = await headers();
@@ -24,12 +26,22 @@ export default async function OrganizationsPage() {
         title="Organizations"
         description="Tenants you belong to. Each owns its own teams, projects, and API keys."
         actions={
-          <Button asChild>
-            <Link href="/organizations/new">
-              <Plus />
-              New organization
-            </Link>
-          </Button>
+          <>
+            <InviteDialog
+              trigger={
+                <Button variant="outline">
+                  <Plus />
+                  Invite users
+                </Button>
+              }
+            />
+            <Button asChild>
+              <Link href="/organizations/new">
+                <Plus />
+                New organization
+              </Link>
+            </Button>
+          </>
         }
       />
 
@@ -79,6 +91,11 @@ export default async function OrganizationsPage() {
           ))}
         </div>
       )}
+
+      <section className="flex flex-col gap-2">
+        <h3 className="text-sm font-medium text-muted-foreground">Pending invitations</h3>
+        <InvitationsList />
+      </section>
     </Main>
   );
 }
