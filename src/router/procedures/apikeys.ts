@@ -1,7 +1,8 @@
 import "server-only";
 
 import { z } from "zod";
-import { authedProcedure } from "@root/lib/orpc";
+import { authedProcedure, resolveActiveOrgId, ActiveOrgError } from "@root/lib/orpc";
+import type { ORPCContext } from "@root/lib/orpc";
 import { prismaDbClient } from "@root/lib/prisma";
 import { mintApiKey } from "@root/lib/api-key-token";
 
@@ -119,12 +120,26 @@ function jsonArray(value: unknown): string[] {
   return value.map((v) => String(v));
 }
 
-function activeOrg(session: { activeOrganizationId?: string | null }) {
-  const id = session.activeOrganizationId;
-  if (!id) {
-    throw Object.assign(new Error("No active organization on this session"), { code: "BAD_INPUT" });
+interface ErrorsLike {
+  NOT_FOUND: () => Error;
+  UNAUTHORIZED: () => Error;
+}
+
+/**
+ * Resolve + auto-pin the active organization. Falls back to the user's
+ * first Member row when `session.activeOrganizationId` is null — Better
+ * Auth doesn't auto-set this on sign-in, so we paper over the gap here so
+ * `apiKeys.list` and friends just work after a fresh login.
+ */
+async function activeOrg(context: ORPCContext, errors: ErrorsLike): Promise<string> {
+  try {
+    return await resolveActiveOrgId(context);
+  } catch (e) {
+    if (e instanceof ActiveOrgError) {
+      throw e.kind === "UNAUTHORIZED" ? errors.UNAUTHORIZED() : errors.NOT_FOUND();
+    }
+    throw e;
   }
-  return id;
 }
 
 export const list = authedProcedure
@@ -145,10 +160,8 @@ export const list = authedProcedure
     }),
   )
   .output(z.object({ keys: z.array(apiKeySchema) }))
-  .handler(async ({ context, input }) => {
-    const organizationId = activeOrg(
-      context.session.session as { activeOrganizationId?: string | null },
-    );
+  .handler(async ({ context, input, errors }) => {
+    const organizationId = await activeOrg(context, errors);
     const rows = await prismaDbClient.apiKey.findMany({
       where: {
         organizationId,
@@ -179,9 +192,7 @@ export const create = authedProcedure
     }),
   )
   .handler(async ({ context, input, errors }) => {
-    const organizationId = activeOrg(
-      context.session.session as { activeOrganizationId?: string | null },
-    );
+    const organizationId = await activeOrg(context, errors);
 
     // Validate project + environment belong to this org and to each other.
     const environment = await prismaDbClient.projectEnvironment.findUnique({
@@ -258,9 +269,7 @@ export const update = authedProcedure
   )
   .output(z.object({ key: apiKeySchema }))
   .handler(async ({ context, input, errors }) => {
-    const organizationId = activeOrg(
-      context.session.session as { activeOrganizationId?: string | null },
-    );
+    const organizationId = await activeOrg(context, errors);
     const existing = await prismaDbClient.apiKey.findUnique({ where: { id: input.keyId } });
     if (!existing || existing.organizationId !== organizationId) throw errors.NOT_FOUND();
 
@@ -306,9 +315,7 @@ export const rotate = authedProcedure
     }),
   )
   .handler(async ({ context, input, errors }) => {
-    const organizationId = activeOrg(
-      context.session.session as { activeOrganizationId?: string | null },
-    );
+    const organizationId = await activeOrg(context, errors);
     const original = await prismaDbClient.apiKey.findUnique({
       where: { id: input.keyId },
       include: { environment: true },
@@ -375,9 +382,7 @@ export const revoke = authedProcedure
   .input(z.object({ keyId: z.string(), reason: z.string().max(200).optional() }))
   .output(z.object({ key: apiKeySchema }))
   .handler(async ({ context, input, errors }) => {
-    const organizationId = activeOrg(
-      context.session.session as { activeOrganizationId?: string | null },
-    );
+    const organizationId = await activeOrg(context, errors);
     const existing = await prismaDbClient.apiKey.findUnique({ where: { id: input.keyId } });
     if (!existing || existing.organizationId !== organizationId) throw errors.NOT_FOUND();
 
@@ -421,10 +426,8 @@ export const projectsAndEnvs = authedProcedure
       teams: z.array(z.object({ id: z.string(), name: z.string(), isActive: z.boolean() })),
     }),
   )
-  .handler(async ({ context }) => {
-    const organizationId = activeOrg(
-      context.session.session as { activeOrganizationId?: string | null },
-    );
+  .handler(async ({ context, errors }) => {
+    const organizationId = await activeOrg(context, errors);
     const [projects, teams] = await Promise.all([
       prismaDbClient.project.findMany({
         where: { organizationId, archivedAt: null },

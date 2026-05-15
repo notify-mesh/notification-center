@@ -5,6 +5,8 @@ import { me, signOut, requestPasswordReset } from "./procedures/auth";
 import * as teams from "./procedures/teams";
 import * as apikeys from "./procedures/apikeys";
 import * as devices from "./procedures/devices";
+import * as audit from "./procedures/audit";
+import * as passkeys from "./procedures/passkeys";
 
 /**
  * The single root router exposed by both the RPC handler (`/rpc`) and the
@@ -32,6 +34,13 @@ export const router = {
     list: devices.list,
     revoke: devices.revoke,
     revokeOthers: devices.revokeOthers,
+  },
+  audit: {
+    listAuthEvents: audit.listAuthEvents,
+    listAdminEvents: audit.listAdminEvents,
+  },
+  passkeys: {
+    list: passkeys.list,
   },
 } as const;
 

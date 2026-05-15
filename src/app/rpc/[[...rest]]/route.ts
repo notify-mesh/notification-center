@@ -8,6 +8,9 @@ import {
 } from "@orpc/server/plugins";
 import { router } from "@root/router";
 import { createORPCContext, type ORPCContext } from "@root/lib/orpc";
+import { LoggingHandlerPlugin } from "@orpc/experimental-pino";
+import { createUniqueId } from "@root/lib/unique-id";
+import { logger } from "@root/lib/logger";
 
 /**
  * The RPC handler exposes the router over oRPC's compact JSON wire format.
@@ -21,7 +24,20 @@ import { createORPCContext, type ORPCContext } from "@root/lib/orpc";
  *    Next.js dev overlay shows the real stack trace instead of a generic 500.
  */
 const handler = new RPCHandler<ORPCContext>(router, {
+  strictGetMethodPluginEnabled: false,
+  eventIteratorKeepAliveEnabled: true,
   plugins: [
+    new LoggingHandlerPlugin({
+      logger,
+      generateId: ({ request }) => {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-expect-error
+        const prevID = request.headers?.get?.("X-Request-ID") as string;
+        return prevID ?? createUniqueId();
+      },
+      logRequestResponse: true, // Log request start/end (disabled by default)
+      logRequestAbort: true, // Log when requests are aborted (disabled by default)
+    }),
     new CORSPlugin({
       origin: (origin) => origin,
       allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"],

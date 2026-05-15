@@ -12,15 +12,21 @@ env.config({ path: [resolve(process.cwd(), ".env"), resolve(process.cwd(), ".env
 const args = process.argv.slice(2);
 
 /**
- * Top-level seed dispatcher. Owns nothing but database connection, CLI
- * routing, and the post-run report. Every piece of domain data lives under
- * `./seed/prepare/<pack>/` so adding a new pack (e.g. demo notifications,
- * test API keys) means dropping in a folder, not editing this file.
+ * Top-level seed dispatcher.
  *
- *   bun run db:seed                # prepare (default)
- *   bun run db:seed -- --prepare   # explicit prepare
- *   bun run db:seed -- --prune     # delete seeded rows
- *   bun run db:seed -- --prune --prepare    # wipe-then-reseed
+ * Defaults
+ * --------
+ * Running without flags performs a **reset-then-seed**: every row this seed
+ * owns (identified by deterministic IDs) is removed first, then the full
+ * fake-data pack is re-created. This avoids unique-key collisions on re-runs
+ * and gives a fresh, deterministic starting point.
+ *
+ * Flags
+ * -----
+ *   bun run db:seed                       # reset + reseed (default)
+ *   bun run db:seed -- --prepare          # seed only — don't prune first
+ *   bun run db:seed -- --prune            # prune only
+ *   bun run db:seed -- --no-reset         # alias of --prepare
  */
 const main = async () => {
   const adapter = new PrismaMariaDb({
@@ -39,11 +45,14 @@ const main = async () => {
   const db = new PrismaClient({ adapter, errorFormat: "pretty" });
 
   try {
-    // Default behaviour (no flags) is to prepare.
     const wantsPrune = args.includes("--prune");
-    const wantsPrepare = args.includes("--prepare") || !wantsPrune;
+    const wantsPrepareOnly = args.includes("--prepare") || args.includes("--no-reset");
+    const wantsPrepare = wantsPrepareOnly || !wantsPrune;
+    // Default behaviour: wipe-then-seed unless the caller explicitly opted
+    // out of the prune step.
+    const shouldPrune = wantsPrune || (!wantsPrepareOnly && wantsPrepare);
 
-    if (wantsPrune) {
+    if (shouldPrune) {
       await PruneDatabaseSeed(db);
     }
     if (wantsPrepare) {

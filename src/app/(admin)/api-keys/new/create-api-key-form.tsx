@@ -89,7 +89,7 @@ export function CreateApiKeyForm() {
         description: description || undefined,
         projectId,
         environmentId,
-        teamId: teamId || undefined,
+        teamId: teamId && teamId !== "__none__" ? teamId : undefined,
         canRead,
         canWrite,
         scopes: parseList(scopesInput),
@@ -208,12 +208,14 @@ export function CreateApiKeyForm() {
             </div>
             <div className="flex flex-col gap-2">
               <Label>Team (optional)</Label>
-              <Select value={teamId} onValueChange={setTeamId}>
+              {/* Radix Select reserves `""` for "show placeholder", so we
+                  use a non-empty sentinel and translate at submit time. */}
+              <Select value={teamId || "__none__"} onValueChange={setTeamId}>
                 <SelectTrigger>
                   <SelectValue placeholder="No team" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No team</SelectItem>
+                  <SelectItem value="__none__">No team</SelectItem>
                   {teams.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
                       {t.name}

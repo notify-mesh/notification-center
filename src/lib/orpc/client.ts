@@ -51,7 +51,14 @@ const link = new RPCLink<ClientContext>({
     new ClientRetryPlugin({
       default: { retry: 2 },
     }),
-    new RetryAfterPlugin(),
+    new RetryAfterPlugin({
+      condition: (response) => {
+        // Override condition to determine if a request should be retried
+        return response.status === 429 || response.status === 503;
+      },
+      maxAttempts: 5, // Maximum retry attempts
+      timeout: 5 * 60 * 1000, // Maximum time to spend retrying (ms)
+    }),
     /**
      * Collapse identical concurrent requests into one. Useful when multiple
      * components mount and each calls `client.auth.me.query()` on the same tick.

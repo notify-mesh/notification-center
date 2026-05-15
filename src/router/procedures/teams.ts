@@ -1,8 +1,9 @@
 import "server-only";
 
 import { z } from "zod";
-import { authedProcedure } from "@root/lib/orpc";
+import { authedProcedure, resolveActiveOrgId, ActiveOrgError } from "@root/lib/orpc";
 import { prismaDbClient } from "@root/lib/prisma";
+import type { ORPCContext } from "@root/lib/orpc";
 
 const teamSchema = z.object({
   id: z.string(),
@@ -15,12 +16,26 @@ const teamSchema = z.object({
   memberCount: z.number().int().nonnegative(),
 });
 
-function activeOrg(session: { activeOrganizationId?: string | null }) {
-  const id = session.activeOrganizationId;
-  if (!id) {
-    throw Object.assign(new Error("No active organization on this session"), { code: "BAD_INPUT" });
+interface ErrorsLike {
+  NOT_FOUND: () => Error;
+  UNAUTHORIZED: () => Error;
+}
+
+/**
+ * Resolve the caller's active organization, translating the typed
+ * `ActiveOrgError` into oRPC's typed error map so the client narrows on
+ * the actual outcome (`NOT_FOUND` = no memberships; `UNAUTHORIZED` = no
+ * session).
+ */
+async function activeOrg(context: ORPCContext, errors: ErrorsLike): Promise<string> {
+  try {
+    return await resolveActiveOrgId(context);
+  } catch (e) {
+    if (e instanceof ActiveOrgError) {
+      throw e.kind === "UNAUTHORIZED" ? errors.UNAUTHORIZED() : errors.NOT_FOUND();
+    }
+    throw e;
   }
-  return id;
 }
 
 export const list = authedProcedure
@@ -33,10 +48,8 @@ export const list = authedProcedure
     tags: ["teams"],
   })
   .output(z.object({ teams: z.array(teamSchema) }))
-  .handler(async ({ context }) => {
-    const organizationId = activeOrg(
-      context.session.session as { activeOrganizationId?: string | null },
-    );
+  .handler(async ({ context, errors }) => {
+    const organizationId = await activeOrg(context, errors);
     const rows = await prismaDbClient.team.findMany({
       where: { organizationId },
       orderBy: [{ isActive: "desc" }, { createdAt: "asc" }],
@@ -71,10 +84,8 @@ export const create = authedProcedure
     }),
   )
   .output(z.object({ team: teamSchema }))
-  .handler(async ({ context, input }) => {
-    const organizationId = activeOrg(
-      context.session.session as { activeOrganizationId?: string | null },
-    );
+  .handler(async ({ context, input, errors }) => {
+    const organizationId = await activeOrg(context, errors);
     const now = new Date();
     const id = `team_${crypto.randomUUID().replace(/-/g, "").slice(0, 20)}`;
     const team = await prismaDbClient.team.create({
@@ -119,9 +130,7 @@ export const update = authedProcedure
   )
   .output(z.object({ team: teamSchema }))
   .handler(async ({ context, input, errors }) => {
-    const organizationId = activeOrg(
-      context.session.session as { activeOrganizationId?: string | null },
-    );
+    const organizationId = await activeOrg(context, errors);
     const existing = await prismaDbClient.team.findUnique({ where: { id: input.teamId } });
     if (!existing || existing.organizationId !== organizationId) {
       throw errors.NOT_FOUND();
@@ -165,9 +174,7 @@ export const setActive = authedProcedure
   )
   .output(z.object({ team: teamSchema }))
   .handler(async ({ context, input, errors }) => {
-    const organizationId = activeOrg(
-      context.session.session as { activeOrganizationId?: string | null },
-    );
+    const organizationId = await activeOrg(context, errors);
     const existing = await prismaDbClient.team.findUnique({ where: { id: input.teamId } });
     if (!existing || existing.organizationId !== organizationId) {
       throw errors.NOT_FOUND();
@@ -203,9 +210,7 @@ export const remove = authedProcedure
   .input(z.object({ teamId: z.string() }))
   .output(z.object({ success: z.boolean() }))
   .handler(async ({ context, input, errors }) => {
-    const organizationId = activeOrg(
-      context.session.session as { activeOrganizationId?: string | null },
-    );
+    const organizationId = await activeOrg(context, errors);
     const existing = await prismaDbClient.team.findUnique({ where: { id: input.teamId } });
     if (!existing || existing.organizationId !== organizationId) {
       throw errors.NOT_FOUND();

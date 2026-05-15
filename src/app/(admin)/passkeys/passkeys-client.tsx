@@ -12,8 +12,13 @@ import {
   KeyRound,
   Globe,
   HardDrive,
+  Cloud,
+  Cpu,
+  Lock,
+  HelpCircle,
 } from "lucide-react";
 import { authClient } from "@root/lib/auth-client";
+import { client } from "@root/lib/orpc/client";
 import { Button } from "@root/components/ui/button";
 import { Card, CardContent } from "@root/components/ui/card";
 import { Badge } from "@root/components/ui/badge";
@@ -31,27 +36,26 @@ import { Label } from "@root/components/ui/label";
 import { Skeleton } from "@root/components/ui/skeleton";
 import { cn } from "@root/lib/utils";
 
-interface Passkey {
-  id: string;
-  name?: string | null;
-  deviceType: string;
-  backedUp: boolean;
-  transports?: string | null;
-  createdAt?: string | Date | null;
-  credentialID?: string;
-  aaguid?: string | null;
-}
+type Passkey = NonNullable<
+  Awaited<ReturnType<typeof client.passkeys.list>>
+>["passkeys"][number];
+
+type VendorKind = Passkey["vendor"]["kind"];
+
+const KIND_LABEL: Record<VendorKind, string> = {
+  "platform-synced": "Synced",
+  "platform-bound": "Device-bound",
+  "security-key": "Security key",
+  "password-manager": "Password manager",
+  unknown: "Unknown",
+};
 
 export function PasskeysClient() {
   const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["passkeys"],
-    queryFn: async () => {
-      const result = await authClient.passkey.listUserPasskeys();
-      if (result.error) throw new Error(result.error.message ?? "Failed to load passkeys");
-      return (result.data ?? []) as Passkey[];
-    },
+    queryFn: async () => (await client.passkeys.list({})).passkeys,
   });
 
   const deleteMutation = useMutation({
@@ -128,6 +132,58 @@ function EmptyState() {
   );
 }
 
+/**
+ * Visual avatar for a passkey: vendor icon when the AAGUID catalogue has
+ * one, otherwise a lucide fallback chosen from `vendor.kind`.
+ *
+ * `iconLight` / `iconDark` are data URIs. We use Tailwind dark-mode classes
+ * to swap between them — no hydration mismatch because both `<img>`s are
+ * rendered and only visibility changes via CSS.
+ */
+function VendorAvatar({ vendor }: { vendor: Passkey["vendor"] }) {
+  if (vendor.iconLight || vendor.iconDark) {
+    const light = vendor.iconLight ?? vendor.iconDark!;
+    const dark = vendor.iconDark ?? vendor.iconLight!;
+    return (
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted p-1.5">
+        {/* eslint-disable-next-line @next/next/no-img-element -- data URI image */}
+        <img
+          src={light}
+          alt={vendor.name}
+          className="size-full object-contain dark:hidden"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element -- data URI image */}
+        <img
+          src={dark}
+          alt={vendor.name}
+          className="hidden size-full object-contain dark:block"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+      <KindIcon kind={vendor.kind} className="size-5" />
+    </div>
+  );
+}
+
+function KindIcon({ kind, className }: { kind: VendorKind; className?: string }) {
+  switch (kind) {
+    case "platform-synced":
+      return <Cloud className={className} />;
+    case "platform-bound":
+      return <Smartphone className={className} />;
+    case "security-key":
+      return <Cpu className={className} />;
+    case "password-manager":
+      return <Lock className={className} />;
+    default:
+      return <HelpCircle className={className} />;
+  }
+}
+
 function PasskeyCard({
   passkey,
   onDelete,
@@ -139,36 +195,26 @@ function PasskeyCard({
 }) {
   const [open, setOpen] = React.useState(false);
   const transports = passkey.transports
-    ? (passkey.transports as string).split(",").filter(Boolean)
+    ? passkey.transports.split(",").filter(Boolean)
     : [];
-  const isPlatform = passkey.deviceType === "singleDevice" || passkey.deviceType === "platform";
 
   return (
     <Card>
       <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
         <div className="flex min-w-0 items-center gap-4">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            {isPlatform ? (
-              <Smartphone className="size-5" />
-            ) : (
-              <KeyRound className="size-5" />
-            )}
-          </div>
+          <VendorAvatar vendor={passkey.vendor} />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <p className="truncate font-medium">{passkey.name || "Unnamed passkey"}</p>
-              <Badge variant={passkey.backedUp ? "success" : "outline"} className="text-[10px]">
-                {passkey.backedUp ? "Synced" : "Device-bound"}
-              </Badge>
               <Badge variant="secondary" className="text-[10px]">
-                {passkey.deviceType}
+                {passkey.vendor.name}
+              </Badge>
+              <Badge variant={passkey.backedUp ? "success" : "outline"} className="text-[10px]">
+                {KIND_LABEL[passkey.vendor.kind]}
               </Badge>
             </div>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              Added{" "}
-              {passkey.createdAt
-                ? new Date(passkey.createdAt).toLocaleString()
-                : "—"}
+              Added {passkey.createdAt ? new Date(passkey.createdAt).toLocaleString() : "—"}
             </p>
           </div>
         </div>
@@ -186,6 +232,15 @@ function PasskeyCard({
                   Full WebAuthn credential metadata, as reported by your authenticator.
                 </DialogDescription>
               </DialogHeader>
+              <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
+                <VendorAvatar vendor={passkey.vendor} />
+                <div className="min-w-0">
+                  <p className="font-medium">{passkey.vendor.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {KIND_LABEL[passkey.vendor.kind]}
+                  </p>
+                </div>
+              </div>
               <dl className="grid gap-2 text-sm">
                 <DetailRow icon={Fingerprint} label="Name" value={passkey.name ?? "—"} />
                 <DetailRow
@@ -194,7 +249,7 @@ function PasskeyCard({
                   value={passkey.deviceType}
                 />
                 <DetailRow
-                  icon={Shield}
+                  icon={Cloud}
                   label="Backed up"
                   value={passkey.backedUp ? "Yes (synced via cloud)" : "No (device-bound)"}
                 />
@@ -208,7 +263,7 @@ function PasskeyCard({
                   label="Credential ID"
                   value={
                     <code className="break-all rounded bg-muted px-1.5 py-0.5 text-xs">
-                      {passkey.credentialID ?? "—"}
+                      {passkey.credentialID}
                     </code>
                   }
                 />
@@ -224,9 +279,12 @@ function PasskeyCard({
                 <DetailRow
                   icon={Plus}
                   label="Created"
-                  value={
-                    passkey.createdAt ? new Date(passkey.createdAt).toLocaleString() : "—"
-                  }
+                  value={passkey.createdAt ? new Date(passkey.createdAt).toLocaleString() : "—"}
+                />
+                <DetailRow
+                  icon={Cpu}
+                  label="Signature counter"
+                  value={passkey.counter.toString()}
                 />
               </dl>
               <DialogFooter>

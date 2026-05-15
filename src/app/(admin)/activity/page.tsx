@@ -1,11 +1,15 @@
-import { ComingSoon } from "../_chrome/page-shell";
+import { Main } from "@root/components/layout/main";
+import { PageHeading } from "@root/components/layout/header";
+import { ActivityClient } from "./activity-client";
 
 export default function ActivityPage() {
   return (
-    <ComingSoon
-      title="Activity"
-      description="Recent sign-ins, sends, and audit events across the platform."
-      note="Live event feed is on the roadmap."
-    />
+    <Main className="flex flex-1 flex-col gap-6">
+      <PageHeading
+        title="Activity"
+        description="A unified, filterable feed of authentication events and operator actions."
+      />
+      <ActivityClient />
+    </Main>
   );
 }

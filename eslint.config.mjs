@@ -3,6 +3,7 @@ import nextVitals from "eslint-config-next/core-web-vitals";
 import prettier from "eslint-config-prettier/flat";
 import nextTs from "eslint-config-next/typescript";
 import eslintNextPlugin from "@next/eslint-plugin-next";
+import reactDoctor from "eslint-plugin-react-doctor";
 
 const eslintConfig = defineConfig([
   {
@@ -17,6 +18,8 @@ const eslintConfig = defineConfig([
   },
   ...nextTs,
   prettier,
+  reactDoctor.configs.recommended,
+  reactDoctor.configs.next,
   ...nextVitals,
   globalIgnores([
     // Default ignores of eslint-config-next:
