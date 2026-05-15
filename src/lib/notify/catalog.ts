@@ -148,6 +148,42 @@ export const PROVIDERS: ReadonlyArray<ProviderSpec> = [
     ],
   },
   {
+    key: "telegram",
+    displayName: "Telegram",
+    description:
+      "Telegram Bot API — broadcast to channels/groups or DM users that messaged the bot.",
+    region: "global",
+    channels: ["telegram"],
+    implemented: true,
+    fields: [
+      {
+        name: "botToken",
+        secret: true,
+        type: "string",
+        required: true,
+        description: "Bot token from @BotFather (format: 123456:AA…).",
+        placeholder: "123456789:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
+      },
+      {
+        name: "apiUrl",
+        secret: false,
+        type: "url",
+        required: false,
+        description: "Override the Bot API base URL (e.g. for a self-hosted Bot API server).",
+        placeholder: "https://api.telegram.org",
+      },
+      {
+        name: "defaultParseMode",
+        secret: false,
+        type: "string",
+        required: false,
+        description:
+          '"HTML" | "Markdown" | "MarkdownV2" — applied when the message doesn\'t set one.',
+        placeholder: "MarkdownV2",
+      },
+    ],
+  },
+  {
     key: "bale",
     displayName: "Bale Messenger",
     description: "Iranian messenger; bot-based notifications with rich content.",

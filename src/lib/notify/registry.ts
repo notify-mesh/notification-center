@@ -4,6 +4,7 @@ import { createKavenegarTransport } from "./transports/kavenegar";
 import { createAdpDigitalTransport } from "./transports/adp-digital";
 import { createConsoleTransport } from "./transports/console";
 import { createSmtpTransport } from "./transports/smtp";
+import { createTelegramTransport } from "./transports/telegram";
 import type { ChannelKind, NotifyMessage, Transport, TransportFactory } from "./types";
 
 /**
@@ -36,6 +37,16 @@ const REGISTRY: Record<string, TransportFactory> = {
         from: string;
         secure?: boolean;
       },
+    }) as Transport<NotifyMessage>,
+
+  telegram: (input) =>
+    createTelegramTransport({
+      creds: input.creds as {
+        botToken: string;
+        apiUrl?: string;
+        defaultParseMode?: "HTML" | "Markdown" | "MarkdownV2";
+      },
+      channelConfig: input.channelConfig as { defaultChatId?: string | number },
     }) as Transport<NotifyMessage>,
 };
 

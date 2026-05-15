@@ -38,6 +38,7 @@ export const router = {
     rotate: apikeys.rotate,
     revoke: apikeys.revoke,
     options: apikeys.projectsAndEnvs,
+    usageMetrics: apikeys.usageMetrics,
   },
   devices: {
     list: devices.list,

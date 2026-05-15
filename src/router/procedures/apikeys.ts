@@ -453,3 +453,213 @@ export const projectsAndEnvs = authedProcedure
       teams: teams.map((t) => ({ id: t.id, name: t.name, isActive: t.isActive })),
     };
   });
+
+/**
+ * Aggregate API-call metrics for the active organization. Sourced from the
+ * lifetime counters on `ApiKey` (totalCalls / successfulCalls / failedCalls
+ * + p95 / p99 / avgResponseTimeMs / lastUsedAt). Returns:
+ *   - org totals + success-rate
+ *   - per-key top list (sorted by totalCalls)
+ *   - per-project rollup
+ *   - per-environment rollup
+ *   - health distribution (healthy / degraded / failing / idle)
+ *   - recency histogram (last hour / today / this week / older / never)
+ *   - latency series for the top keys (p95 + p99)
+ */
+export const usageMetrics = authedProcedure
+  .route({
+    method: "GET",
+    path: "/api-keys/usage-metrics",
+    summary: "Aggregate API-call metrics for the active organization",
+    description:
+      "Calls / success / fail totals, top-keys ordered by traffic, latency percentiles for the top keys, and a recency histogram that lets the dashboard surface idle keys at a glance.",
+    tags: ["api-keys", "analytics"],
+  })
+  .input(z.object({}).optional())
+  .output(
+    z.object({
+      totals: z.object({
+        calls: z.number().int().nonnegative(),
+        successful: z.number().int().nonnegative(),
+        failed: z.number().int().nonnegative(),
+        successRatePct: z.number().int(),
+        securityViolations: z.number().int().nonnegative(),
+        activeKeys: z.number().int().nonnegative(),
+        idleKeys: z.number().int().nonnegative(),
+      }),
+      topKeys: z.array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          keyPrefix: z.string(),
+          projectName: z.string(),
+          environmentName: z.string(),
+          calls: z.number().int(),
+          successful: z.number().int(),
+          failed: z.number().int(),
+          successRatePct: z.number().int(),
+          p95Ms: z.number().int(),
+          p99Ms: z.number().int(),
+          avgMs: z.number().int(),
+          lastUsedAt: z.iso.datetime().nullable(),
+        }),
+      ),
+      byProject: z.array(
+        z.object({
+          projectId: z.string(),
+          projectName: z.string(),
+          calls: z.number().int(),
+          successful: z.number().int(),
+          failed: z.number().int(),
+        }),
+      ),
+      byEnvironment: z.array(
+        z.object({
+          environment: z.string(),
+          calls: z.number().int(),
+        }),
+      ),
+      health: z.object({
+        healthy: z.number().int(),
+        degraded: z.number().int(),
+        failing: z.number().int(),
+        idle: z.number().int(),
+      }),
+      recency: z.array(
+        z.object({
+          bucket: z.string(),
+          count: z.number().int(),
+        }),
+      ),
+      latencySeries: z.array(
+        z.object({
+          name: z.string(),
+          p95: z.number().int(),
+          p99: z.number().int(),
+        }),
+      ),
+    }),
+  )
+  .handler(async ({ context, errors }) => {
+    const organizationId = await activeOrg(context, errors);
+    const keys = await prismaDbClient.apiKey.findMany({
+      where: { organizationId, revokedAt: null },
+      include: {
+        project: { select: { id: true, name: true } },
+        environment: { select: { name: true } },
+      },
+      orderBy: { totalCalls: "desc" },
+    });
+
+    const totals = keys.reduce(
+      (acc, k) => {
+        acc.calls += k.totalCalls;
+        acc.successful += k.successfulCalls;
+        acc.failed += k.failedCalls;
+        acc.securityViolations += k.securityViolations;
+        if (k.lastUsedAt) acc.activeKeys += 1;
+        else acc.idleKeys += 1;
+        return acc;
+      },
+      { calls: 0, successful: 0, failed: 0, securityViolations: 0, activeKeys: 0, idleKeys: 0 },
+    );
+    const successRatePct =
+      totals.calls === 0 ? 0 : Math.round((totals.successful / totals.calls) * 100);
+
+    const topKeys = keys.slice(0, 10).map((k) => ({
+      id: k.id,
+      name: k.name,
+      keyPrefix: k.keyPrefix,
+      projectName: k.project.name,
+      environmentName: k.environment.name,
+      calls: k.totalCalls,
+      successful: k.successfulCalls,
+      failed: k.failedCalls,
+      successRatePct: k.totalCalls === 0 ? 0 : Math.round((k.successfulCalls / k.totalCalls) * 100),
+      p95Ms: k.p95ResponseTimeMs,
+      p99Ms: k.p99ResponseTimeMs,
+      avgMs: k.avgResponseTimeMs,
+      lastUsedAt: k.lastUsedAt ? k.lastUsedAt.toISOString() : null,
+    }));
+
+    const projectMap = new Map<
+      string,
+      { projectId: string; projectName: string; calls: number; successful: number; failed: number }
+    >();
+    for (const k of keys) {
+      const slot = projectMap.get(k.projectId) ?? {
+        projectId: k.projectId,
+        projectName: k.project.name,
+        calls: 0,
+        successful: 0,
+        failed: 0,
+      };
+      slot.calls += k.totalCalls;
+      slot.successful += k.successfulCalls;
+      slot.failed += k.failedCalls;
+      projectMap.set(k.projectId, slot);
+    }
+    const byProject = [...projectMap.values()].sort((a, b) => b.calls - a.calls);
+
+    const envMap = new Map<string, number>();
+    for (const k of keys) {
+      envMap.set(k.environment.name, (envMap.get(k.environment.name) ?? 0) + k.totalCalls);
+    }
+    const byEnvironment = [...envMap.entries()]
+      .map(([environment, calls]) => ({ environment, calls }))
+      .sort((a, b) => b.calls - a.calls);
+
+    // Health buckets: failure rate buckets, with "idle" for never-used keys.
+    let healthy = 0;
+    let degraded = 0;
+    let failing = 0;
+    let idle = 0;
+    for (const k of keys) {
+      if (k.totalCalls === 0) {
+        idle += 1;
+        continue;
+      }
+      const failPct = (k.failedCalls / k.totalCalls) * 100;
+      if (failPct < 5) healthy += 1;
+      else if (failPct < 20) degraded += 1;
+      else failing += 1;
+    }
+
+    // Recency histogram — last hour / today / this week / older / never.
+    const now = Date.now();
+    const hourAgo = now - 3_600_000;
+    const dayAgo = now - 86_400_000;
+    const weekAgo = now - 7 * 86_400_000;
+    const recencyBuckets = {
+      "Past hour": 0,
+      Today: 0,
+      "This week": 0,
+      Older: 0,
+      "Never used": 0,
+    };
+    for (const k of keys) {
+      if (!k.lastUsedAt) recencyBuckets["Never used"] += 1;
+      else {
+        const t = k.lastUsedAt.getTime();
+        if (t >= hourAgo) recencyBuckets["Past hour"] += 1;
+        else if (t >= dayAgo) recencyBuckets["Today"] += 1;
+        else if (t >= weekAgo) recencyBuckets["This week"] += 1;
+        else recencyBuckets["Older"] += 1;
+      }
+    }
+    const recency = Object.entries(recencyBuckets).map(([bucket, count]) => ({ bucket, count }));
+
+    const latencySeries = topKeys
+      .filter((k) => k.p95Ms > 0 || k.p99Ms > 0)
+      .map((k) => ({ name: k.name, p95: k.p95Ms, p99: k.p99Ms }));
+
+    return {
+      totals: { ...totals, successRatePct },
+      topKeys,
+      byProject,
+      byEnvironment,
+      health: { healthy, degraded, failing, idle },
+      recency,
+      latencySeries,
+    };
+  });

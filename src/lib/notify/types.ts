@@ -29,6 +29,26 @@ export interface SmsMessage {
   options?: Record<string, unknown>;
 }
 
+/** Normalised Telegram message (bot API). */
+export interface TelegramMessage {
+  channel: "telegram";
+  /** chat_id, channel @username, or numeric chat id. Single or fan-out list. */
+  to: string | number | Array<string | number>;
+  body: string;
+  /** Telegram bot API parse mode. */
+  parseMode?: "HTML" | "Markdown" | "MarkdownV2";
+  /** Optional media attachment (photo / document / video / audio). */
+  attachment?: {
+    type: "photo" | "document" | "video" | "audio";
+    url: string;
+    caption?: string;
+  };
+  /** Disable link previews. */
+  disableWebPagePreview?: boolean;
+  /** Silent notification. */
+  disableNotification?: boolean;
+}
+
 /** Normalised email message. */
 export interface EmailMessage {
   channel: "email";
@@ -43,7 +63,7 @@ export interface EmailMessage {
   headers?: Record<string, string>;
 }
 
-export type NotifyMessage = SmsMessage | EmailMessage;
+export type NotifyMessage = SmsMessage | EmailMessage | TelegramMessage;
 
 export interface TransportResult {
   /** Provider-assigned id (e.g. Kavenegar messageid). */

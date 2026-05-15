@@ -2,7 +2,18 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Download, FileText, Gauge, Send, Wallet } from "lucide-react";
+import {
+  Activity,
+  AlertTriangle,
+  Clock,
+  Download,
+  FileText,
+  Gauge,
+  KeyRound,
+  Send,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
 import { client } from "@root/lib/orpc/client";
 import { KpiCard } from "@root/components/charts/kpi-card";
 import { Sparkline, AreaChartCard } from "@root/components/charts/area-chart-card";
@@ -76,6 +87,12 @@ export function AnalyticsClient() {
     queryFn: async () => client.analytics.summary(filters),
   });
   const summary = summaryQuery.data;
+
+  const apiMetricsQuery = useQuery({
+    queryKey: ["analytics", "api-usage"],
+    queryFn: async () => client.apiKeys.usageMetrics({}),
+  });
+  const apiMetrics = apiMetricsQuery.data;
 
   return (
     <div className="flex flex-col gap-6">
@@ -274,6 +291,9 @@ export function AnalyticsClient() {
         </div>
       ) : null}
 
+      {/* ----------- API call activity ----------- */}
+      <ApiUsageSection metrics={apiMetrics} loading={apiMetricsQuery.isLoading} />
+
       {/* ----------- Top templates + recent failures ----------- */}
       {summary ? (
         <div className="grid gap-4 lg:grid-cols-2">
@@ -369,6 +389,188 @@ export function AnalyticsClient() {
       ) : null}
     </div>
   );
+}
+
+type ApiMetrics = Awaited<ReturnType<typeof client.apiKeys.usageMetrics>>;
+
+function ApiUsageSection({
+  metrics,
+  loading,
+}: {
+  metrics: ApiMetrics | undefined;
+  loading: boolean;
+}) {
+  return (
+    <section className="flex flex-col gap-4">
+      <div className="flex items-center gap-2">
+        <Activity className="size-4 text-muted-foreground" />
+        <h2 className="text-base font-semibold">API call activity</h2>
+        <span className="text-xs text-muted-foreground">
+          Lifetime aggregates across every active API key in this organization.
+        </span>
+      </div>
+
+      {loading || !metrics ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-32 w-full" />
+          ))}
+        </div>
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <KpiCard
+              label="Total calls"
+              value={metrics.totals.calls.toLocaleString()}
+              hint={`${metrics.totals.activeKeys} active · ${metrics.totals.idleKeys} idle`}
+              icon={TrendingUp}
+            />
+            <KpiCard
+              label="Successful"
+              value={metrics.totals.successful.toLocaleString()}
+              hint={`${metrics.totals.successRatePct}% success rate`}
+              icon={KeyRound}
+            />
+            <KpiCard
+              label="Failed"
+              value={metrics.totals.failed.toLocaleString()}
+              hint={`${metrics.totals.securityViolations} security violations`}
+              icon={AlertTriangle}
+            />
+            <KpiCard
+              label="Top-key p95"
+              value={`${metrics.topKeys[0]?.p95Ms ?? 0} ms`}
+              hint={metrics.topKeys[0]?.name ?? "—"}
+              icon={Clock}
+            />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            <BarChartCard
+              title="Top keys by call volume"
+              description="Stacked successful + failed lifetime calls"
+              data={metrics.topKeys.map((k) => ({
+                name: truncate(k.name, 16),
+                successful: k.successful,
+                failed: k.failed,
+              }))}
+              xKey="name"
+              series={[
+                { dataKey: "successful", label: "Successful", color: "var(--chart-1)", stackId: "k" },
+                { dataKey: "failed", label: "Failed", color: "var(--destructive)", stackId: "k" },
+              ]}
+              className="lg:col-span-2"
+            />
+            <DonutChartCard
+              title="Key health"
+              description="Failure-rate buckets"
+              data={[
+                { name: "Healthy", value: metrics.health.healthy, color: "var(--chart-1)" },
+                { name: "Degraded", value: metrics.health.degraded, color: "var(--chart-4)" },
+                { name: "Failing", value: metrics.health.failing, color: "var(--destructive)" },
+                { name: "Idle", value: metrics.health.idle, color: "var(--muted)" },
+              ]}
+              centerLabel={(
+                metrics.health.healthy +
+                metrics.health.degraded +
+                metrics.health.failing +
+                metrics.health.idle
+              ).toLocaleString()}
+              centerSub="total keys"
+            />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            <BarChartCard
+              title="Calls by project"
+              description="Aggregate lifetime requests, summed across keys"
+              data={metrics.byProject.map((p) => ({
+                name: truncate(p.projectName, 16),
+                calls: p.calls,
+              }))}
+              xKey="name"
+              series={[{ dataKey: "calls", label: "Calls", color: "var(--chart-2)" }]}
+            />
+            <BarChartCard
+              title="Calls by environment"
+              description="Where are these keys being used?"
+              data={metrics.byEnvironment.map((e) => ({ name: e.environment, calls: e.calls }))}
+              xKey="name"
+              series={[{ dataKey: "calls", label: "Calls", color: "var(--chart-3)" }]}
+            />
+            <BarChartCard
+              title="Latency p95 / p99 — top keys"
+              description="Milliseconds, lower is better"
+              data={metrics.latencySeries.map((l) => ({ name: truncate(l.name, 14), p95: l.p95, p99: l.p99 }))}
+              xKey="name"
+              series={[
+                { dataKey: "p95", label: "p95", color: "var(--chart-1)" },
+                { dataKey: "p99", label: "p99", color: "var(--chart-4)" },
+              ]}
+            />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            <BarChartCard
+              title="Recency"
+              description="When were these keys last used?"
+              data={metrics.recency.map((r) => ({ name: r.bucket, keys: r.count }))}
+              xKey="name"
+              series={[{ dataKey: "keys", label: "Keys", color: "var(--chart-5)" }]}
+              className="lg:col-span-2"
+            />
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Top API keys</CardTitle>
+                <CardDescription>By traffic volume.</CardDescription>
+              </CardHeader>
+              <CardContent className="px-0 pb-0">
+                {metrics.topKeys.length === 0 ? (
+                  <p className="px-6 pb-6 text-sm text-muted-foreground">No API key activity yet.</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Key</TableHead>
+                        <TableHead className="text-right">Calls</TableHead>
+                        <TableHead className="text-right">Success</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {metrics.topKeys.slice(0, 6).map((k) => (
+                        <TableRow key={k.id}>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{k.name}</span>
+                              <span className="text-[10px] text-muted-foreground">
+                                {k.projectName} · {k.environmentName}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {k.calls.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Badge variant={k.successRatePct >= 95 ? "success" : "secondary"}>
+                              {k.successRatePct}%
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function truncate(value: string, max: number): string {
+  return value.length <= max ? value : `${value.slice(0, max - 1)}…`;
 }
 
 function FilterField({ label, children }: { label: string; children: React.ReactNode }) {

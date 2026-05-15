@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Copy,
+  Download,
   Eye,
   EyeOff,
   KeyRound,
@@ -36,6 +37,7 @@ import {
   DialogTitle,
 } from "@root/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@root/components/ui/tabs";
+import { QrCode } from "@root/components/ui/qr-code";
 
 interface RecentEvent {
   id: string;
@@ -378,53 +380,24 @@ function TwoFactorCard({
         open={!!enrollState}
         onOpenChange={(o) => !o && setEnrollState(null)}
       >
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Enroll your authenticator</DialogTitle>
             <DialogDescription>
-              Add the URI to your TOTP app, then save these backup codes somewhere safe.
+              Scan the QR with your TOTP app, then save these backup codes somewhere safe.
               Each backup code is single-use.
             </DialogDescription>
           </DialogHeader>
           {enrollState ? (
-            <div className="flex flex-col gap-3 text-sm">
-              <div className="flex flex-col gap-2">
-                <Label>TOTP URI</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    readOnly
-                    value={enrollState.totpURI}
-                    className="font-mono text-xs"
-                  />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => {
-                      navigator.clipboard.writeText(enrollState.totpURI);
-                      toast.success("Copied");
-                    }}
-                  >
-                    <Copy />
-                  </Button>
-                </div>
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label>Backup codes</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {enrollState.backupCodes.map((code) => (
-                    <code
-                      key={code}
-                      className="rounded bg-muted px-2 py-1 text-center font-mono text-xs"
-                    >
-                      {code}
-                    </code>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <EnrollPanel
+              totpURI={enrollState.totpURI}
+              backupCodes={enrollState.backupCodes}
+            />
           ) : null}
           <DialogFooter>
-            <Button onClick={() => setEnrollState(null)}>Done</Button>
+            <Button onClick={() => setEnrollState(null)}>
+              <CheckCircle2 /> I&apos;ve saved everything
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -462,6 +435,138 @@ function TwoFactorCard({
         </DialogContent>
       </Dialog>
     </Card>
+  );
+}
+
+function downloadBackupCodes(codes: string[]) {
+  const header = [
+    "Notification Center — two-factor backup codes",
+    `Generated ${new Date().toISOString()}`,
+    "",
+    "Each code works once. Treat them like passwords.",
+    "",
+  ].join("\n");
+  const body = codes.map((c, i) => `${String(i + 1).padStart(2, "0")}. ${c}`).join("\n");
+  const blob = new Blob([`${header}${body}\n`], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `nc-backup-codes-${new Date().toISOString().slice(0, 10)}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  toast.success("Backup codes downloaded");
+}
+
+// ---------------------------------------------------------------------------
+function EnrollPanel({
+  totpURI,
+  backupCodes,
+}: {
+  totpURI: string;
+  backupCodes: string[];
+}) {
+  const [showUri, setShowUri] = React.useState(false);
+  const secret = React.useMemo(() => {
+    try {
+      const url = new URL(totpURI);
+      return url.searchParams.get("secret") ?? "";
+    } catch {
+      return "";
+    }
+  }, [totpURI]);
+
+  return (
+    <div className="flex flex-col gap-4 text-sm">
+      <div className="flex flex-col items-center gap-3 rounded-lg border bg-muted/30 p-4">
+        <QrCode value={totpURI} size={184} />
+        <div className="text-center">
+          <p className="text-xs text-muted-foreground">
+            Open your authenticator app and scan the code above.
+          </p>
+        </div>
+      </div>
+
+      {secret ? (
+        <div className="flex flex-col gap-2">
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+            Or enter this secret manually
+          </Label>
+          <div className="flex items-center gap-2">
+            <Input
+              readOnly
+              value={secret}
+              className="font-mono text-xs tracking-widest"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => {
+                navigator.clipboard.writeText(secret);
+                toast.success("Secret copied");
+              }}
+            >
+              <Copy />
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+            Backup codes
+          </Label>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                navigator.clipboard.writeText(backupCodes.join("\n"));
+                toast.success("Backup codes copied");
+              }}
+            >
+              <Copy className="mr-1 size-3" /> Copy
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => downloadBackupCodes(backupCodes)}
+            >
+              <Download className="mr-1 size-3" /> Download
+            </Button>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 rounded-lg border bg-muted/30 p-3">
+          {backupCodes.map((code) => (
+            <code
+              key={code}
+              className="rounded bg-background px-2 py-1.5 text-center font-mono text-xs"
+            >
+              {code}
+            </code>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Store these somewhere safe — they let you sign in if you lose your authenticator.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setShowUri((v) => !v)}
+        className="text-left text-xs text-muted-foreground underline-offset-4 hover:underline"
+      >
+        {showUri ? "Hide raw URI" : "Show raw URI"}
+      </button>
+      {showUri ? (
+        <Input readOnly value={totpURI} className="font-mono text-[10px]" />
+      ) : null}
+    </div>
   );
 }
 
