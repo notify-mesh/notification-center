@@ -1,35 +1,36 @@
-import task from "tasuku";
 import { PrismaClient } from "@prisma/client";
 // Seeds
 import { PrepareMain } from "./main";
 
+/**
+ * Top-level "prepare" entry. Owns CLI flag parsing for the prepare side:
+ *
+ *   bun run db:seed                            # prepare everything
+ *   bun run db:seed -- --prepare               # explicit
+ *   bun run db:seed -- --prepare --main        # only the "main" pack
+ *   bun run db:seed -- --prepare --exclude=main
+ */
 export async function PrepareDatabase(db: PrismaClient) {
   const args = process.argv.slice(2);
 
   // Exclude some seeds from the list
   const excluded: Array<string> = [];
   const isExcluded = (seed: string) => excluded.includes(seed);
-  // Example: npm run db:seed:prepare -- --exclude=main
   if (args.includes("--exclude=main")) {
     excluded.push("main");
   }
 
-  let shouldPrepareAll: boolean = args.includes("--all") || true;
-  // Example: npm run db:seed:prepare -- --main
-  if (args.includes("--main")) {
+  // When the user asks for a specific pack (e.g. `--main`), only run that.
+  // Otherwise run every pack that hasn't been excluded.
+  const onlyMain = args.includes("--main");
+  if (onlyMain) {
     await PrepareMain(db);
-    shouldPrepareAll = false;
+    return;
   }
 
-  // Example: npm run db:seed:prepare -- --all
-  // Example: npm run db:seed:prepare
-  if (shouldPrepareAll) {
-    await task("Preparing all data", async ({ setTitle }) => {
-      if (!isExcluded("main")) {
-        await PrepareMain(db);
-      }
-
-      setTitle("Prepared all data 🎉");
-    });
+  console.log("Preparing all data…");
+  if (!isExcluded("main")) {
+    await PrepareMain(db);
   }
+  console.log("Prepared all data 🎉");
 }

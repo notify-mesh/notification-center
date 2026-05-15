@@ -12,7 +12,13 @@ expand(
 
 export default {
   schema: join("prisma/schema"),
+  datasource: {
+    url: process.env.DATABASE_URL,
+  },
   migrations: {
-    seed: "bunx ts-node --project ./prisma/tsconfig.json prisma/seed.ts",
+    // Run with Bun directly: prisma/seed.ts pulls in `better-auth/crypto` for
+    // password hashing, and Better Auth is ESM-only — ts-node with the legacy
+    // `module: commonjs` setup in prisma/tsconfig.json refuses to load it.
+    seed: "bun --bun prisma/seed.ts",
   },
 } satisfies PrismaConfig;
