@@ -39,6 +39,16 @@ export const SEED_IDS = {
   apiKeyStaging: "seed-key-staging-001",
   apiKeyDev: "seed-key-dev-001",
   apiKeyDeprecated: "seed-key-deprecated-001",
+
+  // Internal notifications — varied audiences for inbox/outbox/analytics texture
+  internalNotifWelcome: "seed-notif-welcome-001",
+  internalNotifDeploy: "seed-notif-deploy-001",
+  internalNotifRateLimit: "seed-notif-rate-001",
+  internalNotifReview: "seed-notif-review-001",
+  internalNotifRunbook: "seed-notif-runbook-001",
+  internalNotifSecurity: "seed-notif-security-001",
+  internalNotifViewerWelcome: "seed-notif-viewer-welcome-001",
+  internalNotifTutorial: "seed-notif-tutorial-001",
 } as const;
 
 export const SEED_ADMIN = {

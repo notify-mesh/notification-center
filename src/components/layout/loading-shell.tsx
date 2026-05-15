@@ -28,10 +28,7 @@ export function LoadingShell() {
       className="fixed inset-0 z-50 grid place-items-center bg-background"
     >
       {/* Soft brand vignette */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,theme(colors.primary/8%)_0%,transparent_60%)]"
-      />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0" />
 
       <div className="relative flex flex-col items-center gap-7">
         {/* Logo + concentric pings */}
@@ -51,9 +48,7 @@ export function LoadingShell() {
 
         {/* Title + caption */}
         <div className="flex flex-col items-center gap-2 text-center">
-          <span className="text-base font-semibold tracking-tight text-foreground">
-            {title}
-          </span>
+          <span className="text-base font-semibold tracking-tight text-foreground">{title}</span>
           <span className="text-xs text-muted-foreground">Notification Center</span>
         </div>
 

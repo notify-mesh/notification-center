@@ -50,6 +50,8 @@ model User {
   authAuditLogs AuthAuditLog[]
   aclUserRoles  AclUserRole[]
   apiKeys       ApiKey[]
+  internalNotificationsSent     InternalNotification[]          @relation("InternalNotificationSender")
+  internalNotificationsReceived InternalNotificationRecipient[] @relation("InternalNotificationRecipient")
 
   @@unique([email])
   @@unique([phoneNumber])

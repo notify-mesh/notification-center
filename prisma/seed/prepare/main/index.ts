@@ -42,6 +42,9 @@ export async function PrepareMain(db: PrismaClient) {
   console.log("· Seeding audit logs (auth + admin)…");
   await seedAudits(db);
 
+  console.log("· Seeding internal notifications (inbox + outbox + analytics)…");
+  await seedInternalNotifications(db);
+
   console.log("🎉 Database seeded with Notification Center demo data.");
 
   // Print the API-key plaintexts ONCE — they're stored as HMACs, so the
@@ -967,5 +970,355 @@ async function seedAudits(db: PrismaClient): Promise<void> {
   ];
   for (const row of adminEvents) {
     await db.adminAuditLog.create({ data: row });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Internal notifications
+//
+// Goal: give every seeded user a populated inbox and the admin a populated
+// outbox with non-trivial read/click/dismiss counters so the analytics
+// drill-down has real data on first load.
+//
+// State distribution (curated, not random — re-runs are deterministic):
+//   • 8 notifications across all 5 audience kinds (GLOBAL, ORG, PROJECT,
+//     TEAM, USERS).
+//   • Each notification fans out to the matching recipient set; per-user
+//     state is hand-picked (read / dismissed / clicked / unread) so the
+//     dashboard shows variety.
+//   • Aggregate counters (`readCount`, `dismissedCount`, `clickedCount`)
+//     are computed from the recipient state so they stay in sync.
+// ---------------------------------------------------------------------------
+
+type Severity = "INFO" | "SUCCESS" | "WARNING" | "CRITICAL";
+type AudienceKind = "GLOBAL" | "ORGANIZATION" | "PROJECT" | "TEAM" | "USERS";
+type RecipientState = "unread" | "read" | "dismissed" | "clicked";
+
+interface NotifFixture {
+  id: string;
+  senderUserId: string;
+  title: string;
+  body: string;
+  severity: Severity;
+  category: string | null;
+  action: { label: string; url: string; kind: "link" | "primary" | "danger" } | null;
+  audienceKind: AudienceKind;
+  audienceLabel: string;
+  target: object;
+  mirrorChannels: string[];
+  /** Hours since `now` — earlier rows go first in the outbox / inbox. */
+  sentHoursAgo: number;
+  /** Per-recipient state. The Map's user IDs must exist in the seeded users. */
+  recipients: Map<string, RecipientState>;
+}
+
+async function seedInternalNotifications(db: PrismaClient): Promise<void> {
+  const allUsers = [SEED_IDS.user, SEED_IDS.userDeveloper, SEED_IDS.userViewer];
+
+  const fixtures: NotifFixture[] = [
+    {
+      id: SEED_IDS.internalNotifWelcome,
+      senderUserId: SEED_IDS.user,
+      title: "Welcome to Notification Center",
+      body: `# Welcome aboard 👋
+
+You're now part of **${SEED_ORG.name}**. A few quick links to get you started:
+
+- Browse the **Projects** tab to see what's live
+- Set up **passkeys** under Security for sign-in
+- Send a test SMS from the **Send** tab
+
+Need help? Reach out to your team lead in your inbox.`,
+      severity: "INFO",
+      category: "onboarding",
+      action: { label: "Open dashboard", url: "/dashboard", kind: "primary" },
+      audienceKind: "ORGANIZATION",
+      audienceLabel: `Org · ${SEED_ORG.name} (3)`,
+      target: { kind: "ORGANIZATION", organizationId: SEED_IDS.organization },
+      mirrorChannels: [],
+      sentHoursAgo: 3 * 24,
+      recipients: new Map<string, RecipientState>([
+        [SEED_IDS.user, "read"],
+        [SEED_IDS.userDeveloper, "read"],
+        [SEED_IDS.userViewer, "clicked"],
+      ]),
+    },
+    {
+      id: SEED_IDS.internalNotifSecurity,
+      senderUserId: SEED_IDS.user,
+      title: "Security: rotate any keys exposed in support tickets",
+      body: `# Action required
+
+A handful of API keys were pasted into customer-support tickets last week.
+We've already revoked the affected keys. Please:
+
+1. Audit your team's **API Keys** tab
+2. Rotate anything that hasn't been touched in 30 days
+3. Confirm your 2FA is on
+
+> The full incident report is in the [security wiki](#).`,
+      severity: "CRITICAL",
+      category: "security",
+      action: { label: "Open API Keys", url: "/api-keys", kind: "danger" },
+      audienceKind: "GLOBAL",
+      audienceLabel: `All users (3)`,
+      target: { kind: "GLOBAL" },
+      mirrorChannels: ["email"],
+      sentHoursAgo: 4 * 24,
+      recipients: new Map<string, RecipientState>([
+        [SEED_IDS.user, "read"],
+        [SEED_IDS.userDeveloper, "clicked"],
+        [SEED_IDS.userViewer, "read"],
+      ]),
+    },
+    {
+      id: SEED_IDS.internalNotifDeploy,
+      senderUserId: SEED_IDS.user,
+      title: "Deploy window tomorrow at 10:00 IRST",
+      body: `Heads-up — we're shipping the **payments pipeline** rewrite tomorrow.
+
+- Maintenance window: **10:00–10:45 IRST**
+- Expected impact: SMS sends queue but don't drop
+- Rollback plan: previous build is one click away
+
+Please ack in #ops if your service can't tolerate the window.`,
+      severity: "WARNING",
+      category: "ops",
+      action: { label: "Runbook", url: "/templates", kind: "link" },
+      audienceKind: "TEAM",
+      audienceLabel: "Team · Payments Engineering (1)",
+      target: { kind: "TEAM", teamId: SEED_IDS.teamPayments },
+      mirrorChannels: [],
+      sentHoursAgo: 6,
+      // Payments team has no members yet — fan out manually to admin + developer
+      // for inbox texture. (In production the audience resolver would do this.)
+      // Leave the admin unread so the inbox demo can exercise "Mark read".
+      recipients: new Map<string, RecipientState>([
+        [SEED_IDS.user, "unread"],
+        [SEED_IDS.userDeveloper, "unread"],
+      ]),
+    },
+    {
+      id: SEED_IDS.internalNotifRunbook,
+      senderUserId: SEED_IDS.userDeveloper,
+      title: "Payments runbook updated for the new pipeline",
+      body: `I've refreshed the payments runbook with the new pipeline steps.
+
+**Key changes**
+- Added the \`payment.confirmed\` template walk-through
+- Documented the new retry policy (3 attempts, exponential)
+- Added a "panic switch" section
+
+Let me know if anything's unclear.`,
+      severity: "SUCCESS",
+      category: "ops",
+      action: { label: "Open templates", url: "/templates", kind: "link" },
+      audienceKind: "TEAM",
+      audienceLabel: "Team · Payments Engineering (1)",
+      target: { kind: "TEAM", teamId: SEED_IDS.teamPayments },
+      mirrorChannels: [],
+      sentHoursAgo: 2 * 24,
+      recipients: new Map<string, RecipientState>([[SEED_IDS.user, "read"]]),
+    },
+    {
+      id: SEED_IDS.internalNotifRateLimit,
+      senderUserId: SEED_IDS.userDeveloper,
+      title: "Heads up: rate limit spikes on Kavenegar",
+      body: `Kavenegar is rate-limiting us during peak hours.
+
+We're seeing **429s every ~3 minutes** between 18:00–22:00 IRST. Mitigation:
+
+- Increase the retry-after honoring in the dispatch worker
+- Pre-buy a higher quota tier
+- Move bursty templates to a delayed-send pool
+
+I'll batch the work into a single PR tonight.`,
+      severity: "WARNING",
+      category: "ops",
+      action: null,
+      audienceKind: "ORGANIZATION",
+      audienceLabel: `Org · ${SEED_ORG.name} (3)`,
+      target: { kind: "ORGANIZATION", organizationId: SEED_IDS.organization },
+      mirrorChannels: [],
+      sentHoursAgo: 26,
+      // Admin starts unread so multi-select + mark-read have a fresh row to chew on.
+      recipients: new Map<string, RecipientState>([
+        [SEED_IDS.user, "unread"],
+        [SEED_IDS.userDeveloper, "read"],
+        [SEED_IDS.userViewer, "dismissed"],
+      ]),
+    },
+    {
+      id: SEED_IDS.internalNotifReview,
+      senderUserId: SEED_IDS.user,
+      title: "Quarterly review — please share your highlights",
+      body: `Hey Sara,
+
+It's that time again 🙂 — please drop a short list of your Q1 highlights so we can prep the review.
+
+A few prompts:
+- Biggest delivery
+- One thing you'd change about the process
+- One thing you'd like to learn next quarter
+
+No deadline, but earlier is better.`,
+      severity: "INFO",
+      category: "people",
+      action: null,
+      audienceKind: "USERS",
+      audienceLabel: `User · ${SEED_DEVELOPER.name}`,
+      target: { kind: "USERS", userIds: [SEED_IDS.userDeveloper] },
+      mirrorChannels: [],
+      sentHoursAgo: 30,
+      recipients: new Map<string, RecipientState>([[SEED_IDS.userDeveloper, "unread"]]),
+    },
+    {
+      id: SEED_IDS.internalNotifViewerWelcome,
+      senderUserId: SEED_IDS.user,
+      title: "You've been added as a viewer",
+      body: `Welcome to the platform.
+
+Your access is **read-only** for now — you'll see projects, templates, and notifications but won't be able to send or edit. Reach out if you need a higher tier.`,
+      severity: "INFO",
+      category: "onboarding",
+      action: { label: "Open dashboard", url: "/dashboard", kind: "link" },
+      audienceKind: "USERS",
+      audienceLabel: `User · ${SEED_VIEWER.name}`,
+      target: { kind: "USERS", userIds: [SEED_IDS.userViewer] },
+      mirrorChannels: [],
+      sentHoursAgo: 1,
+      recipients: new Map<string, RecipientState>([[SEED_IDS.userViewer, "unread"]]),
+    },
+    {
+      id: SEED_IDS.internalNotifTutorial,
+      senderUserId: SEED_IDS.user,
+      title: "Tip: the compose tab supports markdown",
+      body: `Quick tip for the **Compose** tab:
+
+- \`**bold**\` and \`_italics_\` work as you'd expect
+- Use \`-\` or \`1.\` for bullet / numbered lists
+- Wrap code in backticks for \`inline\` style
+- Use \`> quote\` for callouts
+
+You can preview live with the **Split** view in the toolbar.`,
+      severity: "SUCCESS",
+      category: "tips",
+      action: { label: "Open Compose", url: "/notifications", kind: "primary" },
+      audienceKind: "USERS",
+      audienceLabel: `User · ${SEED_ADMIN.name}`,
+      target: { kind: "USERS", userIds: [SEED_IDS.user] },
+      mirrorChannels: [],
+      sentHoursAgo: 5 * 24,
+      // Leave this one unread for the admin so the inbox shows the badge dot.
+      recipients: new Map<string, RecipientState>([[SEED_IDS.user, "unread"]]),
+    },
+  ];
+
+  for (const f of fixtures) {
+    await seedOneInternalNotification(db, f, allUsers);
+  }
+}
+
+async function seedOneInternalNotification(
+  db: PrismaClient,
+  f: NotifFixture,
+  allUserIds: string[],
+): Promise<void> {
+  const now = Date.now();
+  const sentAt = new Date(now - f.sentHoursAgo * 3_600_000);
+
+  const recipientIds = [...f.recipients.keys()];
+  // Sanity: every recipient must be a seeded user.
+  for (const id of recipientIds) {
+    if (!allUserIds.includes(id)) {
+      throw new Error(`Seed fixture references unknown user id: ${id}`);
+    }
+  }
+
+  // Aggregate counters derived from per-recipient state. Keep these in sync
+  // with the recipient rows or the analytics tab shows stale numbers.
+  let readCount = 0;
+  let dismissedCount = 0;
+  let clickedCount = 0;
+  for (const state of f.recipients.values()) {
+    if (state === "read") readCount += 1;
+    if (state === "dismissed") dismissedCount += 1;
+    if (state === "clicked") {
+      readCount += 1; // clicked implies read in our model
+      clickedCount += 1;
+    }
+  }
+
+  await db.internalNotification.upsert({
+    where: { id: f.id },
+    create: {
+      id: f.id,
+      senderUserId: f.senderUserId,
+      title: f.title,
+      body: f.body,
+      severity: f.severity,
+      category: f.category,
+      action: f.action as never,
+      audienceKind: f.audienceKind,
+      audienceLabel: f.audienceLabel,
+      target: f.target as never,
+      recipientCount: recipientIds.length,
+      mirrorChannels: f.mirrorChannels as never,
+      mirrorJobIds: [] as never,
+      sentAt,
+      readCount,
+      dismissedCount,
+      clickedCount,
+      createdAt: sentAt,
+    },
+    update: {
+      title: f.title,
+      body: f.body,
+      severity: f.severity,
+      category: f.category,
+      action: f.action as never,
+      audienceKind: f.audienceKind,
+      audienceLabel: f.audienceLabel,
+      target: f.target as never,
+      recipientCount: recipientIds.length,
+      mirrorChannels: f.mirrorChannels as never,
+      sentAt,
+      readCount,
+      dismissedCount,
+      clickedCount,
+    },
+  });
+
+  // Recipient rows have generated cuid(2) IDs, so we wipe + recreate. Cheap —
+  // each fixture has at most a handful of recipients.
+  await db.internalNotificationRecipient.deleteMany({
+    where: { notificationId: f.id },
+  });
+
+  for (const [userId, state] of f.recipients.entries()) {
+    // Stagger the per-recipient timestamps so the "Read over time" analytics
+    // chart shows actual movement across the hour buckets.
+    const offsetMin = state === "unread" ? 0 : 5 + Math.floor(Math.random() * 240);
+    const deliveredAt = state === "unread" ? null : new Date(sentAt.getTime() + offsetMin * 60_000);
+    const readAt =
+      state === "read" || state === "clicked"
+        ? new Date(sentAt.getTime() + (offsetMin + 1) * 60_000)
+        : null;
+    const dismissedAt =
+      state === "dismissed" ? new Date(sentAt.getTime() + offsetMin * 60_000) : null;
+    const clickedAt =
+      state === "clicked" ? new Date(sentAt.getTime() + (offsetMin + 2) * 60_000) : null;
+
+    await db.internalNotificationRecipient.create({
+      data: {
+        notificationId: f.id,
+        userId,
+        channel: "inApp",
+        deliveredAt,
+        readAt,
+        dismissedAt,
+        clickedAt,
+      },
+    });
   }
 }

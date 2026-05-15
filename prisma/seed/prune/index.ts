@@ -24,6 +24,7 @@ export async function PruneDatabaseSeed(db: PrismaClient) {
   }
 
   console.log("Pruning all seed data…");
+  await pruneInternalNotifications(db);
   await pruneAudits(db);
   await pruneApiKeys(db);
   await pruneAcl(db);
@@ -46,6 +47,25 @@ const API_KEY_IDS = [
   SEED_IDS.apiKeyDev,
   SEED_IDS.apiKeyDeprecated,
 ];
+const INTERNAL_NOTIF_IDS = [
+  SEED_IDS.internalNotifWelcome,
+  SEED_IDS.internalNotifDeploy,
+  SEED_IDS.internalNotifRateLimit,
+  SEED_IDS.internalNotifReview,
+  SEED_IDS.internalNotifRunbook,
+  SEED_IDS.internalNotifSecurity,
+  SEED_IDS.internalNotifViewerWelcome,
+  SEED_IDS.internalNotifTutorial,
+];
+
+async function pruneInternalNotifications(db: PrismaClient): Promise<void> {
+  console.log("· Pruning internal notifications + recipients…");
+  // Recipient rows cascade from the parent's onDelete:Cascade, so we only
+  // need to nuke the parent.
+  await db.internalNotification.deleteMany({
+    where: { id: { in: INTERNAL_NOTIF_IDS } },
+  });
+}
 
 async function pruneAudits(db: PrismaClient): Promise<void> {
   console.log("· Pruning audit logs (auth + admin)…");

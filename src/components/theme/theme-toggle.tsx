@@ -47,6 +47,10 @@ export function ThemeToggle({
 }: ThemeToggleProps) {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
+  // Documented next-themes pattern for avoiding the SSR/CSR icon mismatch.
+  // The setMounted-in-effect runs exactly once after first paint to flip the
+  // initial neutral icon over to the real resolved-theme icon.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   React.useEffect(() => setMounted(true), []);
 
   // While SSR / before mount, render an icon that won't flicker — the inline

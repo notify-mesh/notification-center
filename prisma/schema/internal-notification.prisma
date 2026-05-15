@@ -1,0 +1,122 @@
+// =============================================================================
+// InternalNotification — in-app messages sent between users of this platform.
+// Distinct from `Notification` (which models *outbound* sends through SMS/email
+// providers).
+//
+// Send semantics
+//   • Sender picks an audience target (global | org | project | team | users).
+//   • At send time, the audience is resolved to a concrete user list and one
+//     `InternalNotificationRecipient` row is created per recipient.
+//   • Read receipts (read / dismissed / archived) live on the recipient row.
+//   • Optional mirror through the existing notification pipeline (email/SMS)
+//     is recorded via `mirrorChannels` + `mirrorJobIds`.
+//
+// Permission semantics (enforced at the procedure layer, not the schema)
+//   • Super-admin (User.role === "admin") can pick any audience, including
+//     `global` (every active user).
+//   • Other senders can only target audiences scoped to organizations they
+//     are a `Member` of — see audience resolver in
+//     `src/lib/internal-notify/audience.ts`.
+// =============================================================================
+
+model InternalNotification {
+  id          String                          @id @default(cuid(2))
+
+  // ---- Authorship ----
+  senderUserId String
+  sender       User                           @relation("InternalNotificationSender", fields: [senderUserId], references: [id], onDelete: Cascade)
+
+  // ---- Content ----
+  title        String                         @db.VarChar(200)
+  body         String                         @db.Text   // markdown source
+  /// Optional structured action (e.g. CTA URL). { label, url, kind }
+  action       Json?
+  /// "info" | "success" | "warning" | "critical"
+  severity     InternalNotificationSeverity   @default(INFO)
+  /// Free-form category for filtering / grouping ("announcement", "ops", ...).
+  category     String?                        @db.VarChar(60)
+
+  // ---- Audience snapshot ----
+  /// Denormalised summary for cheap list renders. Truth is in `target`.
+  audienceKind   InternalNotificationAudience
+  /// Display label captured at send time, e.g. "Project Acme · prod" or "All users".
+  audienceLabel  String                       @db.VarChar(200)
+  /// Structured audience spec. Shape depends on `audienceKind`.
+  target         Json
+  /// Concrete recipient count resolved at send time.
+  recipientCount Int                          @default(0)
+
+  // ---- Optional cross-channel mirror ----
+  /// Channels we also dispatched through better-notify ("email", "sms", ...).
+  mirrorChannels Json                         @default("[]")
+  /// `Notification.id` rows for the mirror sends (one per recipient × channel).
+  mirrorJobIds   Json                         @default("[]")
+
+  // ---- Lifecycle ----
+  scheduledFor   DateTime?
+  expiresAt      DateTime?
+  sentAt         DateTime                     @default(now())
+  cancelledAt    DateTime?
+
+  // ---- Aggregate counters (kept in sync by recipient mutations) ----
+  readCount      Int                          @default(0)
+  dismissedCount Int                          @default(0)
+  clickedCount   Int                          @default(0)
+
+  recipients     InternalNotificationRecipient[]
+
+  createdAt      DateTime                     @default(now())
+  updatedAt      DateTime                     @updatedAt
+
+  @@index([senderUserId, createdAt])
+  @@index([audienceKind, createdAt])
+  @@index([sentAt])
+  @@map("internal_notifications")
+}
+
+model InternalNotificationRecipient {
+  id             String                @id @default(cuid(2))
+  notificationId String
+  notification   InternalNotification  @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User                  @relation("InternalNotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+
+  // ---- Per-recipient state ----
+  /// First time the recipient *fetched* the notification (inbox query).
+  deliveredAt    DateTime?
+  /// First time the recipient explicitly marked it read.
+  readAt         DateTime?
+  /// Recipient dismissed (hidden from inbox) without explicit read.
+  dismissedAt    DateTime?
+  /// Recipient clicked the CTA action.
+  clickedAt      DateTime?
+  /// Optional snooze — hide until this time.
+  snoozedUntil   DateTime?
+
+  /// Optional inbound channel hint ("inApp" | "email" | "sms") for analytics.
+  channel        String?               @db.VarChar(20)
+
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  @@unique([notificationId, userId])
+  @@index([userId, readAt])
+  @@index([userId, deliveredAt])
+  @@index([notificationId, readAt])
+  @@map("internal_notification_recipients")
+}
+
+enum InternalNotificationSeverity {
+  INFO
+  SUCCESS
+  WARNING
+  CRITICAL
+}
+
+enum InternalNotificationAudience {
+  GLOBAL
+  ORGANIZATION
+  PROJECT
+  TEAM
+  USERS
+}

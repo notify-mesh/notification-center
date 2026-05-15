@@ -16,6 +16,7 @@ import * as notificationsSend from "./procedures/notifications-send";
 import * as analytics from "./procedures/analytics";
 import * as invitations from "./procedures/invitations";
 import * as permissions from "./procedures/permissions";
+import * as internalNotify from "./procedures/internal-notify";
 
 /**
  * The single root router exposed by both the RPC handler (`/rpc`) and the
@@ -108,6 +109,23 @@ export const router = {
     deleteRole: permissions.deleteRole,
     grantUserRole: permissions.grantUserRole,
     revokeUserRole: permissions.revokeUserRole,
+  },
+  internalNotify: {
+    audienceOptions: internalNotify.audienceOptions,
+    audiencePreview: internalNotify.audiencePreview,
+    searchUsers: internalNotify.searchUsers,
+    send: internalNotify.send,
+    inbox: internalNotify.inbox,
+    outbox: internalNotify.outbox,
+    unreadCount: internalNotify.unreadCount,
+    markRead: internalNotify.markRead,
+    markManyRead: internalNotify.markManyRead,
+    markAllRead: internalNotify.markAllRead,
+    dismiss: internalNotify.dismiss,
+    dismissMany: internalNotify.dismissMany,
+    click: internalNotify.click,
+    analytics: internalNotify.analytics,
+    stream: internalNotify.stream,
   },
 } as const;
 
