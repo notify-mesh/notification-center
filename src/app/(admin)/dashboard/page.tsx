@@ -29,8 +29,8 @@ import {
   CardTitle,
 } from "@root/components/ui/card";
 import { KpiCard } from "@root/components/charts/kpi-card";
-import { AreaChartCard, Sparkline } from "@root/components/charts/area-chart-card";
-import { DonutChartCard } from "@root/components/charts/donut-chart-card";
+import { Sparkline } from "@root/components/charts/area-chart-card";
+import { DashboardCharts } from "./dashboard-charts";
 
 export default async function DashboardPage() {
   const requestHeaders = await headers();
@@ -139,42 +139,17 @@ export default async function DashboardPage() {
         </div>
       ) : null}
 
-      {/* ───── Send volume chart + channel mix ───── */}
+      {/* ───── Send volume chart + channel mix ─────
+          The chart cards live in a client island. Recharts and its function
+          props (e.g. `xTickFormatter`) can't cross the RSC boundary, so this
+          server component passes pre-computed plain JSON and lets the island
+          render the SVG. */}
       {summary ? (
-        <div className="grid gap-4 lg:grid-cols-3">
-          <AreaChartCard
-            title="Send volume — last 7 days"
-            description="Stacked sent + failed counts per day"
-            data={summary.timeline}
-            xKey="bucket"
-            series={[
-              { dataKey: "sent", label: "Sent", color: "var(--chart-1)" },
-              { dataKey: "failed", label: "Failed", color: "var(--destructive)" },
-            ]}
-            className="lg:col-span-2"
-            xTickFormatter={(s) => s.slice(5)}
-            showYAxis
-            actions={
-              <Button asChild variant="ghost" size="sm">
-                <Link href="/analytics">
-                  Details
-                  <ArrowUpRight />
-                </Link>
-              </Button>
-            }
-          />
-          <DonutChartCard
-            title="Channel mix"
-            description="Successful sends by channel"
-            data={summary.byChannel.map((c, i) => ({
-              name: c.channel,
-              value: c.sent,
-              color: `var(--chart-${(i % 5) + 1})`,
-            }))}
-            centerLabel={summary.totals.sent.toLocaleString()}
-            centerSub="total sent"
-          />
-        </div>
+        <DashboardCharts
+          timeline={summary.timeline}
+          byChannel={summary.byChannel}
+          totalSent={summary.totals.sent}
+        />
       ) : null}
 
       {/* ───── Platform counts + Quick actions ───── */}

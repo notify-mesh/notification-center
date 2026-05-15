@@ -98,13 +98,7 @@ export const summary = authedProcedure
       channel: z.string().optional(),
       provider: z.string().optional(),
       templateName: z.string().optional(),
-      sinceDays: z
-        .number()
-        .int()
-        .min(1)
-        .max(180)
-        .default(7)
-        .describe("Days back from now. 1-180."),
+      sinceDays: z.number().int().min(1).max(180).default(7).describe("Days back from now. 1-180."),
       bucket: BUCKET.optional().describe("Auto-picked from range when omitted."),
     }),
   )

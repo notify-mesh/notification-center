@@ -94,8 +94,7 @@ function enumerateBuckets(since: Date, until: Date, bucket: BucketSize): string[
   const start = startOfBucket(since, bucket);
   const end = startOfBucket(until, bucket);
   const out: string[] = [];
-  const step =
-    bucket === "hour" ? 3_600_000 : bucket === "day" ? 86_400_000 : 7 * 86_400_000;
+  const step = bucket === "hour" ? 3_600_000 : bucket === "day" ? 86_400_000 : 7 * 86_400_000;
   for (let t = start.getTime(); t <= end.getTime(); t += step) {
     out.push(bucketKey(new Date(t), bucket));
   }
