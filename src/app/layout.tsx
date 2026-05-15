@@ -1,18 +1,59 @@
 import Script from "next/script";
-import { DM_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { cn } from "@root/lib/utils";
 import { ThemeProvider } from "@root/components/theme/theme-provider";
 import "@root/global.css";
 import "@root/lib/orpc/server-client";
 import type React from "react";
 
-const dmMono = DM_Mono({
-  weight: ["300", "400", "500"],
-  display: "auto",
-  adjustFontFallback: true,
-  preload: true,
-  subsets: ["latin"],
+/**
+ * DM Mono shipped locally from `public/fonts/DM_Mono/`.
+ *
+ * We host the font ourselves instead of pulling from Google's CDN — keeps
+ * the app working in air-gapped / restricted networks, eliminates a
+ * third-party request, and means the same exact font byte-for-byte ships
+ * in CI, dev, and prod.
+ *
+ * `next/font/local` hashes the files at build time and emits a CSS
+ * `@font-face` block that resolves to a versioned URL, so cache-busting is
+ * free across deploys.
+ */
+const dmMono = localFont({
   variable: "--font-mono",
+  display: "swap",
+  preload: true,
+  src: [
+    {
+      path: "../../public/fonts/DM_Mono/DMMono-Light.ttf",
+      weight: "300",
+      style: "normal",
+    },
+    {
+      path: "../../public/fonts/DM_Mono/DMMono-LightItalic.ttf",
+      weight: "300",
+      style: "italic",
+    },
+    {
+      path: "../../public/fonts/DM_Mono/DMMono-Regular.ttf",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../../public/fonts/DM_Mono/DMMono-Italic.ttf",
+      weight: "400",
+      style: "italic",
+    },
+    {
+      path: "../../public/fonts/DM_Mono/DMMono-Medium.ttf",
+      weight: "500",
+      style: "normal",
+    },
+    {
+      path: "../../public/fonts/DM_Mono/DMMono-MediumItalic.ttf",
+      weight: "500",
+      style: "italic",
+    },
+  ],
 });
 
 export default function RootLayout({

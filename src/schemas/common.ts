@@ -8,15 +8,7 @@ import { z } from "zod";
  */
 
 /** Every delivery channel the platform speaks. */
-export const CHANNEL = z.enum([
-  "sms",
-  "email",
-  "push",
-  "bale",
-  "telegram",
-  "slack",
-  "webhook",
-]);
+export const CHANNEL = z.enum(["sms", "email", "push", "bale", "telegram", "slack", "webhook"]);
 export type Channel = z.infer<typeof CHANNEL>;
 
 /** Provider credential storage state. */

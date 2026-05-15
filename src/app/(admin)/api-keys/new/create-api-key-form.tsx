@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@root/components/ui/select";
 import { Card, CardContent } from "@root/components/ui/card";
+import { DateTimePicker } from "@root/components/ui/date-time-picker";
 import { Badge } from "@root/components/ui/badge";
 import {
   Dialog,
@@ -267,8 +268,8 @@ export function CreateApiKeyForm() {
           <DialogHeader>
             <DialogTitle>Copy your new key</DialogTitle>
             <DialogDescription>
-              We don&apos;t store the plaintext. After you close this dialog, only the masked
-              prefix remains visible.
+              We don&apos;t store the plaintext. After you close this dialog, only the masked prefix
+              remains visible.
             </DialogDescription>
           </DialogHeader>
           {revealedToken ? (
@@ -293,6 +294,7 @@ export function CreateApiKeyForm() {
             <Button
               onClick={() => {
                 setRevealedToken(null);
+                // eslint-disable-next-line react-doctor/react-compiler-destructure-method
                 router.push("/api-keys");
               }}
             >
@@ -375,14 +377,21 @@ function IdentityStep({
 }: {
   state: FormState;
   update: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
-  projects: ReadonlyArray<{ id: string; name: string; environments: ReadonlyArray<{ id: string; name: string; isDefault: boolean }> }>;
+  projects: ReadonlyArray<{
+    id: string;
+    name: string;
+    environments: ReadonlyArray<{ id: string; name: string; isDefault: boolean }>;
+  }>;
   environments: ReadonlyArray<{ id: string; name: string; isDefault: boolean }>;
   teams: ReadonlyArray<{ id: string; name: string }>;
   onProjectChange: (id: string) => void;
 }) {
   return (
     <div className="flex flex-col gap-5">
-      <StepHeader title="Name your key" subtitle="Pick a name your future self will recognise in an audit log." />
+      <StepHeader
+        title="Name your key"
+        subtitle="Pick a name your future self will recognise in an audit log."
+      />
       <div className="grid gap-4 sm:grid-cols-[1.4fr_1fr]">
         <div className="flex flex-col gap-2">
           <Label htmlFor="name">Name</Label>
@@ -396,12 +405,12 @@ function IdentityStep({
           />
         </div>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="expiresAt">Expires (optional)</Label>
-          <Input
-            id="expiresAt"
-            type="datetime-local"
+          <Label>Expires (optional)</Label>
+          <DateTimePicker
             value={state.expiresAt}
-            onChange={(e) => update("expiresAt", e.target.value)}
+            onChange={(v) => update("expiresAt", v)}
+            placeholder="Never expires"
+            fromDate={new Date()}
           />
         </div>
       </div>
@@ -534,7 +543,8 @@ function PermissionsStep({
           rows={2}
         />
         <p className="text-xs text-muted-foreground">
-          Free-form strings, comma- or newline-separated. Empty inherits the read/write toggles above.
+          Free-form strings, comma- or newline-separated. Empty inherits the read/write toggles
+          above.
         </p>
       </div>
 
@@ -618,9 +628,7 @@ function LimitsStep({
             <span className="flex items-center gap-2">
               <ShieldAlert className="size-4" /> Advanced restrictions
             </span>
-            <span className="text-xs text-muted-foreground">
-              {advancedOpen ? "Hide" : "Show"}
-            </span>
+            <span className="text-xs text-muted-foreground">{advancedOpen ? "Hide" : "Show"}</span>
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-4 flex flex-col gap-4">
@@ -738,7 +746,9 @@ function ReviewStep({
         <ReviewRow label="Methods" value={state.allowedMethods.join(", ") || "None"} />
         <ReviewRow
           label="Scopes"
-          value={parseList(state.scopes).length ? parseList(state.scopes).join(", ") : "Inherits R/W"}
+          value={
+            parseList(state.scopes).length ? parseList(state.scopes).join(", ") : "Inherits R/W"
+          }
         />
         <ReviewRow
           label="IPs"
@@ -748,7 +758,9 @@ function ReviewStep({
           label="Countries"
           value={
             parseList(state.countries).length
-              ? parseList(state.countries).map((c) => c.toUpperCase()).join(", ")
+              ? parseList(state.countries)
+                  .map((c) => c.toUpperCase())
+                  .join(", ")
               : "Any"
           }
         />
@@ -834,9 +846,7 @@ function SummaryRail({
               parseList(state.countries).length
                 ? `${parseList(state.countries).length} countries`
                 : null,
-              parseList(state.origins).length
-                ? `${parseList(state.origins).length} origins`
-                : null,
+              parseList(state.origins).length ? `${parseList(state.origins).length} origins` : null,
             ]
               .filter(Boolean)
               .join(" · ") || `None (${state.restrictionMode})`

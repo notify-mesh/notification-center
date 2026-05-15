@@ -23,7 +23,6 @@ async function activeOrg(context: ORPCContext, errors: ErrorsLike): Promise<stri
   }
 }
 
-
 export const summary = authedProcedure
   .route({
     method: "GET",
