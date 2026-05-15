@@ -3,95 +3,13 @@ import "server-only";
 import { z } from "zod";
 import { authedProcedure } from "@root/lib/orpc";
 import { prismaDbClient } from "@root/lib/prisma";
-
-const AUTH_ACTIONS = [
-  "SIGN_IN",
-  "SIGN_OUT",
-  "SIGN_UP",
-  "PASSWORD_CHANGE",
-  "PASSWORD_RESET_REQUEST",
-  "PASSWORD_RESET_COMPLETE",
-  "EMAIL_VERIFY_REQUEST",
-  "EMAIL_VERIFY_COMPLETE",
-  "PHONE_VERIFY_REQUEST",
-  "PHONE_VERIFY_COMPLETE",
-  "TWO_FACTOR_ENABLE",
-  "TWO_FACTOR_DISABLE",
-  "TWO_FACTOR_CHALLENGE",
-  "TWO_FACTOR_VERIFY",
-  "BACKUP_CODE_USED",
-  "PASSKEY_REGISTER",
-  "PASSKEY_REMOVE",
-  "PASSKEY_AUTHENTICATE",
-  "SESSION_CREATE",
-  "SESSION_REFRESH",
-  "SESSION_REVOKE",
-  "SESSION_REVOKE_ALL",
-  "DEVICE_TRUST",
-  "DEVICE_UNTRUST",
-  "DEVICE_REVOKE",
-  "IMPERSONATION_START",
-  "IMPERSONATION_END",
-  "ACCOUNT_BAN",
-  "ACCOUNT_UNBAN",
-  "ACCOUNT_DELETE",
-  "ROLE_CHANGE",
-  "ORG_JOIN",
-  "ORG_LEAVE",
-  "ORG_INVITE_ACCEPT",
-  "ORG_INVITE_DECLINE",
-  "DEVICE_AUTH_REQUEST",
-  "DEVICE_AUTH_APPROVE",
-  "DEVICE_AUTH_REJECT",
-  "COMPROMISED_PASSWORD_DETECTED",
-  "RATE_LIMITED",
-] as const;
-
-const AUTH_OUTCOMES = ["SUCCESS", "FAILURE", "BLOCKED"] as const;
-const SEVERITIES = ["INFO", "WARN", "CRITICAL"] as const;
-
-const authEventSchema = z.object({
-  id: z.string(),
-  userId: z.string().nullable(),
-  action: z.enum(AUTH_ACTIONS),
-  outcome: z.enum(AUTH_OUTCOMES),
-  reason: z.string().nullable(),
-  identifier: z.string().nullable(),
-  identifierKind: z.string().nullable(),
-  method: z.string().nullable(),
-  sessionId: z.string().nullable(),
-  ipAddress: z.string().nullable(),
-  userAgent: z.string().nullable(),
-  country: z.string().nullable(),
-  region: z.string().nullable(),
-  city: z.string().nullable(),
-  riskScore: z.number().int().nullable(),
-  riskFactors: z.array(z.string()),
-  metadata: z.record(z.string(), z.unknown()).nullable(),
-  createdAt: z.iso.datetime(),
-});
-
-const adminEventSchema = z.object({
-  id: z.string(),
-  actorUserId: z.string(),
-  actorEmail: z.string().nullable(),
-  action: z.string(),
-  targetType: z.string(),
-  targetId: z.string(),
-  targetLabel: z.string().nullable(),
-  organizationId: z.string().nullable(),
-  projectId: z.string().nullable(),
-  environmentId: z.string().nullable(),
-  before: z.record(z.string(), z.unknown()).nullable(),
-  after: z.record(z.string(), z.unknown()).nullable(),
-  ipAddress: z.string().nullable(),
-  userAgent: z.string().nullable(),
-  reason: z.string().nullable(),
-  severity: z.enum(SEVERITIES),
-  freshSession: z.boolean().nullable(),
-  correlationId: z.string().nullable(),
-  createdAt: z.iso.datetime(),
-});
+import {
+  AUTH_ACTIONS,
+  AUTH_OUTCOMES,
+  authEventSchema,
+  adminEventSchema,
+} from "@root/schemas/audit";
+import { AUDIT_SEVERITY as SEVERITIES } from "@root/schemas/common";
 
 function jsonRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
@@ -124,8 +42,8 @@ export const listAuthEvents = authedProcedure
     z.object({
       limit: z.number().int().min(1).max(100).default(50),
       cursor: z.string().optional().describe("`id` of the last row from the previous page."),
-      action: z.enum(AUTH_ACTIONS).optional(),
-      outcome: z.enum(AUTH_OUTCOMES).optional(),
+      action: AUTH_ACTIONS.optional(),
+      outcome: AUTH_OUTCOMES.optional(),
       userId: z.string().optional(),
     }),
   )
@@ -199,7 +117,7 @@ export const listAdminEvents = authedProcedure
       limit: z.number().int().min(1).max(100).default(50),
       cursor: z.string().optional(),
       action: z.string().optional(),
-      severity: z.enum(SEVERITIES).optional(),
+      severity: SEVERITIES.optional(),
       organizationId: z.string().optional(),
       targetType: z.string().optional(),
     }),

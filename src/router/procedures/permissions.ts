@@ -5,6 +5,7 @@ import { authedProcedure, resolveActiveOrgId, ActiveOrgError } from "@root/lib/o
 import type { ORPCContext } from "@root/lib/orpc";
 import { prismaDbClient } from "@root/lib/prisma";
 import { recordAdminActivity } from "@root/lib/audit";
+import { roleSchema, permissionSchema, assignmentSchema } from "@root/schemas/permissions";
 
 /**
  * ACL procedures backing the Permissions Management page.
@@ -24,52 +25,6 @@ import { recordAdminActivity } from "@root/lib/audit";
  *   • `grantUserRole`    — assign role to user (org/project/env scope)
  *   • `revokeUserRole`   — remove a grant
  */
-
-const roleSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  displayName: z.string(),
-  description: z.string().nullable(),
-  organizationId: z.string().nullable(),
-  isBuiltIn: z.boolean(),
-  isActive: z.boolean(),
-  priority: z.number().int(),
-  inheritsFromRoleId: z.string().nullable(),
-  permissions: z.array(
-    z.object({ action: z.string(), subject: z.string(), inverted: z.boolean() }),
-  ),
-  createdAt: z.iso.datetime(),
-});
-
-const permissionSchema = z.object({
-  id: z.string(),
-  action: z.string(),
-  subject: z.string(),
-  displayName: z.string(),
-  description: z.string().nullable(),
-  category: z.string().nullable(),
-  isBuiltIn: z.boolean(),
-});
-
-const assignmentSchema = z.object({
-  id: z.string(),
-  userId: z.string(),
-  user: z.object({
-    id: z.string(),
-    name: z.string(),
-    email: z.string(),
-    image: z.string().nullable(),
-  }),
-  roleId: z.string(),
-  roleName: z.string(),
-  organizationId: z.string().nullable(),
-  projectId: z.string().nullable(),
-  environmentId: z.string().nullable(),
-  startsAt: z.iso.datetime().nullable(),
-  endsAt: z.iso.datetime().nullable(),
-  grantedReason: z.string().nullable(),
-  createdAt: z.iso.datetime(),
-});
 
 interface ErrorsLike {
   NOT_FOUND: () => Error;

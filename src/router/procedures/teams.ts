@@ -4,17 +4,12 @@ import { z } from "zod";
 import { authedProcedure, resolveActiveOrgId, ActiveOrgError } from "@root/lib/orpc";
 import { prismaDbClient } from "@root/lib/prisma";
 import type { ORPCContext } from "@root/lib/orpc";
-
-const teamSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string().nullable(),
-  organizationId: z.string(),
-  isActive: z.boolean(),
-  createdAt: z.iso.datetime(),
-  updatedAt: z.iso.datetime().nullable(),
-  memberCount: z.number().int().nonnegative(),
-});
+import {
+  teamSchema,
+  createTeamInput,
+  updateTeamInput,
+  setTeamActiveInput,
+} from "@root/schemas/teams";
 
 interface ErrorsLike {
   NOT_FOUND: () => Error;
@@ -77,12 +72,7 @@ export const create = authedProcedure
     description: "Creates a new team inside the active organization. Returns the row.",
     tags: ["teams"],
   })
-  .input(
-    z.object({
-      name: z.string().min(2).max(80),
-      description: z.string().max(500).optional(),
-    }),
-  )
+  .input(createTeamInput)
   .output(z.object({ team: teamSchema }))
   .handler(async ({ context, input, errors }) => {
     const organizationId = await activeOrg(context, errors);
@@ -121,13 +111,7 @@ export const update = authedProcedure
       "Patch a team's name or description. Only fields included in the body are touched.",
     tags: ["teams"],
   })
-  .input(
-    z.object({
-      teamId: z.string(),
-      name: z.string().min(2).max(80).optional(),
-      description: z.string().max(500).nullable().optional(),
-    }),
-  )
+  .input(updateTeamInput)
   .output(z.object({ team: teamSchema }))
   .handler(async ({ context, input, errors }) => {
     const organizationId = await activeOrg(context, errors);
@@ -167,12 +151,7 @@ export const setActive = authedProcedure
       "Soft-toggle for team availability. Deactivated teams remain in the DB but are filtered out of most UI listings.",
     tags: ["teams"],
   })
-  .input(
-    z.object({
-      teamId: z.string(),
-      isActive: z.boolean(),
-    }),
-  )
+  .input(setTeamActiveInput)
   .output(z.object({ team: teamSchema }))
   .handler(async ({ context, input, errors }) => {
     const organizationId = await activeOrg(context, errors);

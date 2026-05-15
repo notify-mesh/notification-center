@@ -4,20 +4,7 @@ import { z } from "zod";
 import { authedProcedure, resolveActiveOrgId, ActiveOrgError } from "@root/lib/orpc";
 import type { ORPCContext } from "@root/lib/orpc";
 import { prismaDbClient } from "@root/lib/prisma";
-
-const envSchema = z.object({
-  id: z.string(),
-  projectId: z.string(),
-  name: z.string(),
-  description: z.string().nullable(),
-  isActive: z.boolean(),
-  isDefault: z.boolean(),
-  archivedAt: z.iso.datetime().nullable(),
-  settings: z.record(z.string(), z.unknown()),
-  maxSendsPerDay: z.number().int().nullable(),
-  maxSendsPerMonth: z.number().int().nullable(),
-  createdAt: z.iso.datetime(),
-});
+import { envSchema } from "@root/schemas/environments";
 
 interface ErrorsLike {
   NOT_FOUND: () => Error;

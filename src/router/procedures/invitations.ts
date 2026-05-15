@@ -6,20 +6,7 @@ import type { ORPCContext } from "@root/lib/orpc";
 import { prismaDbClient } from "@root/lib/prisma";
 import { auth } from "@root/lib/auth";
 import { recordAdminActivity } from "@root/lib/audit";
-
-const ROLES = ["owner", "admin", "member", "developer", "viewer"] as const;
-
-const invitationSchema = z.object({
-  id: z.string(),
-  organizationId: z.string(),
-  email: z.email(),
-  role: z.string().nullable(),
-  teamId: z.string().nullable(),
-  status: z.string(),
-  inviterId: z.string(),
-  expiresAt: z.iso.datetime(),
-  createdAt: z.iso.datetime(),
-});
+import { INVITATION_ROLE as ROLES, invitationSchema } from "@root/schemas/invitations";
 
 interface ErrorsLike {
   NOT_FOUND: () => Error;
@@ -93,7 +80,7 @@ export const send = authedProcedure
         .min(1)
         .max(50)
         .describe("Up to 50 recipient emails in a single bulk call."),
-      role: z.enum(ROLES).default("member"),
+      role: ROLES.default("member"),
       teamId: z.string().optional(),
       /** Resend an invitation that's already pending. */
       resend: z.boolean().default(false),

@@ -4,22 +4,8 @@ import { z } from "zod";
 import { authedProcedure, resolveActiveOrgId, ActiveOrgError } from "@root/lib/orpc";
 import type { ORPCContext } from "@root/lib/orpc";
 import { prismaDbClient } from "@root/lib/prisma";
-
-const CHANNELS = ["sms", "email", "push", "bale", "telegram", "slack", "webhook"] as const;
-
-const channelSchema = z.object({
-  id: z.string(),
-  projectId: z.string(),
-  environmentId: z.string(),
-  channel: z.enum(CHANNELS),
-  providerKey: z.string(),
-  isActive: z.boolean(),
-  priority: z.number().int(),
-  config: z.record(z.string(), z.unknown()),
-  dailyCap: z.number().int().nullable(),
-  monthlyCap: z.number().int().nullable(),
-  createdAt: z.iso.datetime(),
-});
+import { CHANNEL as CHANNELS, type Channel } from "@root/schemas/common";
+import { channelSchema } from "@root/schemas/channels";
 
 interface ErrorsLike {
   NOT_FOUND: () => Error;
@@ -57,7 +43,7 @@ export const list = authedProcedure
         id: c.id,
         projectId: c.projectId,
         environmentId: c.environmentId,
-        channel: c.channel as (typeof CHANNELS)[number],
+        channel: c.channel as Channel,
         providerKey: c.providerKey,
         isActive: c.isActive,
         priority: c.priority,
@@ -82,7 +68,7 @@ export const upsert = authedProcedure
     z.object({
       projectId: z.string(),
       envId: z.string(),
-      channel: z.enum(CHANNELS),
+      channel: CHANNELS,
       providerKey: z.string(),
       isActive: z.boolean().default(true),
       priority: z.number().int().min(0).max(1000).default(100),
@@ -128,7 +114,7 @@ export const upsert = authedProcedure
         id: row.id,
         projectId: row.projectId,
         environmentId: row.environmentId,
-        channel: row.channel as (typeof CHANNELS)[number],
+        channel: row.channel as Channel,
         providerKey: row.providerKey,
         isActive: row.isActive,
         priority: row.priority,
@@ -147,7 +133,7 @@ export const remove = authedProcedure
     summary: "Remove a channel binding",
     tags: ["channels"],
   })
-  .input(z.object({ projectId: z.string(), envId: z.string(), channel: z.enum(CHANNELS) }))
+  .input(z.object({ projectId: z.string(), envId: z.string(), channel: CHANNELS }))
   .output(z.object({ success: z.boolean() }))
   .handler(async ({ context, input, errors }) => {
     const organizationId = await activeOrg(context, errors);

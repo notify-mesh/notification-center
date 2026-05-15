@@ -4,6 +4,8 @@ import { z } from "zod";
 import { authedProcedure, resolveActiveOrgId, ActiveOrgError } from "@root/lib/orpc";
 import type { ORPCContext } from "@root/lib/orpc";
 import { getAnalyticsSummary } from "@root/lib/notify/analytics";
+import { analyticsSummarySchema as summarySchema } from "@root/schemas/analytics";
+import { ANALYTICS_BUCKET as BUCKET } from "@root/schemas/common";
 
 interface ErrorsLike {
   NOT_FOUND: () => Error;
@@ -21,66 +23,6 @@ async function activeOrg(context: ORPCContext, errors: ErrorsLike): Promise<stri
   }
 }
 
-const BUCKET = z.enum(["hour", "day", "week"]);
-
-const summarySchema = z.object({
-  range: z.object({
-    since: z.iso.datetime(),
-    until: z.iso.datetime(),
-    bucket: BUCKET,
-  }),
-  totals: z.object({
-    sent: z.number().int().nonnegative(),
-    failed: z.number().int().nonnegative(),
-    queued: z.number().int().nonnegative(),
-    deliveryRatePct: z.number().int(),
-    failureRatePct: z.number().int(),
-  }),
-  prior: z.object({
-    sent: z.number().int().nonnegative(),
-    failed: z.number().int().nonnegative(),
-  }),
-  byChannel: z.array(z.object({ channel: z.string(), sent: z.number(), failed: z.number() })),
-  byProvider: z.array(z.object({ provider: z.string(), sent: z.number(), failed: z.number() })),
-  timeline: z.array(
-    z.object({
-      bucket: z.string(),
-      sent: z.number(),
-      failed: z.number(),
-      total: z.number(),
-    }),
-  ),
-  topTemplates: z.array(
-    z.object({
-      templateName: z.string(),
-      sent: z.number(),
-      failed: z.number(),
-      share: z.number(),
-    }),
-  ),
-  latency: z.object({
-    p50: z.number(),
-    p95: z.number(),
-    p99: z.number(),
-    count: z.number(),
-  }),
-  recentFailures: z.array(
-    z.object({
-      id: z.string(),
-      channel: z.string(),
-      reason: z.string().nullable(),
-      createdAt: z.iso.datetime(),
-      toPhone: z.string().nullable(),
-      toEmail: z.string().nullable(),
-      providerName: z.string().nullable(),
-    }),
-  ),
-  costIrr: z.object({
-    total: z.number().int(),
-    perChannel: z.array(z.object({ channel: z.string(), total: z.number().int() })),
-    perDay: z.array(z.object({ bucket: z.string(), cost: z.number().int() })),
-  }),
-});
 
 export const summary = authedProcedure
   .route({

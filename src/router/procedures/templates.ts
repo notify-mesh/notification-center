@@ -4,36 +4,14 @@ import { z } from "zod";
 import { authedProcedure, resolveActiveOrgId, ActiveOrgError } from "@root/lib/orpc";
 import type { ORPCContext } from "@root/lib/orpc";
 import { prismaDbClient } from "@root/lib/prisma";
-
-const CHANNELS = ["sms", "email", "push", "bale", "telegram"] as const;
-const STATUSES = ["DRAFT", "PUBLISHED", "ARCHIVED"] as const;
-
-const variantSchema = z.object({
-  id: z.string(),
-  channel: z.enum(CHANNELS),
-  locale: z.string(),
-  version: z.number().int(),
-  status: z.enum(STATUSES),
-  subject: z.string().nullable(),
-  html: z.string().nullable(),
-  text: z.string().nullable(),
-  pushTitle: z.string().nullable(),
-  pushBody: z.string().nullable(),
-  createdAt: z.iso.datetime(),
-});
-
-const templateSchema = z.object({
-  id: z.string(),
-  projectId: z.string(),
-  name: z.string(),
-  displayName: z.string(),
-  description: z.string().nullable(),
-  category: z.string().nullable(),
-  variableSchema: z.record(z.string(), z.unknown()),
-  archived: z.boolean(),
-  createdAt: z.iso.datetime(),
-  variants: z.array(variantSchema),
-});
+import {
+  TEMPLATE_CHANNEL as CHANNELS,
+  TEMPLATE_STATUS as STATUSES,
+  variantSchema,
+  templateSchema,
+  type TemplateChannel,
+  type TemplateStatus,
+} from "@root/schemas/templates";
 
 interface ErrorsLike {
   NOT_FOUND: () => Error;
@@ -99,10 +77,10 @@ export const list = authedProcedure
         createdAt: t.createdAt.toISOString(),
         variants: t.variants.map((v) => ({
           id: v.id,
-          channel: v.channel as (typeof CHANNELS)[number],
+          channel: v.channel as TemplateChannel,
           locale: v.locale,
           version: v.version,
-          status: v.status as (typeof STATUSES)[number],
+          status: v.status as TemplateStatus,
           subject: v.subject,
           html: v.html,
           text: v.text,
@@ -136,7 +114,7 @@ export const create = authedProcedure
       variants: z
         .array(
           z.object({
-            channel: z.enum(CHANNELS),
+            channel: CHANNELS,
             locale: z.string().min(2).max(10).default("fa-IR"),
             subject: z.string().optional(),
             html: z.string().optional(),
@@ -210,10 +188,10 @@ export const create = authedProcedure
         createdAt: template!.createdAt.toISOString(),
         variants: template!.variants.map((v) => ({
           id: v.id,
-          channel: v.channel as (typeof CHANNELS)[number],
+          channel: v.channel as TemplateChannel,
           locale: v.locale,
           version: v.version,
-          status: v.status as (typeof STATUSES)[number],
+          status: v.status as TemplateStatus,
           subject: v.subject,
           html: v.html,
           text: v.text,
@@ -354,7 +332,7 @@ export const preview = authedProcedure
   .input(
     z.object({
       templateId: z.string(),
-      channel: z.enum(CHANNELS),
+      channel: CHANNELS,
       locale: z.string().default("fa-IR"),
       variables: z.record(z.string(), z.unknown()).default({}),
     }),
